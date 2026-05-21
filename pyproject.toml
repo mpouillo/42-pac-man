@@ -1,0 +1,16 @@
+[project]
+name = "pac-man"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "flake8>=7.3.0",
+    "mazegenerator",
+    "mypy>=2.1.0",
+    "pip>=26.1.1",
+    "raylib>=5.5.0.4",
+]
+
+[tool.uv.sources]
+mazegenerator = { path = "mazegenerator-2.0.2-py3-none-any.whl" }

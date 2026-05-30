@@ -5,6 +5,7 @@
 2026-05-30
 	: Started working on the GameModel:
 		- Created Level class, with parsing of the grid returned by MazeGenerator
+		- Created Ghost, Pacman and GameModel class (incomplete)
 		- Created constants.py file
 		- Created level_{id}.json assets
 

@@ -1,9 +1,9 @@
 from typing import List
 
+from constants import LEVELS_DIR
 from mazegenerator import MazeGenerator
 from pydantic import BaseModel
 from protocols import CellState
-from src.config import LEVELS_DIR
 
 
 class LevelData(BaseModel):

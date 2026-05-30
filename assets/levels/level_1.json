@@ -1,6 +1,6 @@
 {
     "size_x": 10,
     "size_y": 10,
-    "time_limit": 90,
+    "time_limit": 60,
     "seed": 42
 }

@@ -9,9 +9,11 @@
 		- Created constants.py file
 		- Created level_{id}.json assets
 
-2026-05-21
+2026-05-31
 	: Updates to levels:
 		- Fixes and improvements to Level class
 		- Updates to level_{id}.json file structure and values
+	: Completed Ghost logic (pathfinding)
 	: Created HighscoreManager class
 	: Updated GameModel to reflect changes
+	: Updates to protocols.py (Dataclasses, Enums)

@@ -9,5 +9,4 @@ CONFIG_FILE_PATH = PROJECT_ROOT / "config.json"
 
 # Game data
 STARTING_LIVES: int = 3
-PACMAN_SPEED: float = 2.0
-GHOST_SPEED: float = 1.0
+PACMAN_SPEED: float = 1.5

@@ -22,23 +22,11 @@ class CheatType(Enum):
 
 
 class Direction(Enum):
-    UP = 1
-    DOWN = 2
-    LEFT = 3
-    RIGHT = 4
-    NONE = 5
-
-
-class GhostState(Enum):
-    CHASING = 1
-    EDIBLE = 2
-    EATEN = 3
-
-
-class PacmanState(Enum):
-    ALIVE = 1
-    POWERED = 2
-    DEAD = 3
+    UP = (0, -1)
+    DOWN = (0, 1)
+    LEFT = (-1, 0)
+    RIGHT = (1, 0)
+    NONE = (0, 0)
 
 
 class CellState(Enum):
@@ -48,17 +36,28 @@ class CellState(Enum):
     SUPER_PACGUM = 3
 
 
+class PacmanState(Enum):
+    ALIVE = 1
+    POWERED = 2
+    DEAD = 3
+
+
+class GhostState(Enum):
+    CHASING = 1
+    EDIBLE = 2
+    EATEN = 3
+
+
 class GhostType(Enum):
-    PINK = 1
-    RED = 2
-    ORANGE = 3
-    BLUE = 4
+    PINK = "Pinky"
+    RED = "Blinky"
+    ORANGE = "Clyde"
+    BLUE = "Inky"
 
 
 class GhostBehavior(Enum):
     CHASE = 1
     SCATTER = 2
-    FRIGHTENED = 3
 
 
 @dataclass

@@ -19,3 +19,14 @@ class Pacman:
             direction=self.direction,
             state=self.state
         )
+
+    def update(self, delta_time: float) -> None:
+        match self.direction:
+            case Direction.UP:
+                self.y -= delta_time * self._speed
+            case Direction.DOWN:
+                self.y += delta_time * self._speed
+            case Direction.LEFT:
+                self.x -= delta_time * self._speed
+            case Direction.RIGHT:
+                self.x += delta_time * self._speed

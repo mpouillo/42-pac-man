@@ -70,7 +70,13 @@ class GameModel(ModelProtocol):
         return self._highscores.get_top_scores(10)
 
     def submit_score(self, player_name: str) -> bool:
-        return self._highscores.add_entry(player_name, self._score)
+        try:
+            entry = HighscoreEntry(name=player_name, score=self._score)
+        except ValueError:
+            return False
+
+        self._highscores.add_entry(entry)
+        return True
 
     def trigger_cheat(self, cheat: CheatType) -> None:
         pass

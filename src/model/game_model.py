@@ -24,11 +24,17 @@ class GameModel(ModelProtocol):
         self._level: Level = Level()
         self._highscores = HighscoreManager()
         self._pacman: Pacman = Pacman()
-        self._ghosts: List[Ghost] = [Ghost(GhostType(i)) for i in range(1, 4)]
+        self._ghosts: List[Ghost] = [
+            Ghost(ghost, self._level.data.difficulty_settings.ghost_speed
+                  if self._level.data else 1.0)
+            for ghost in list(GhostType)
+        ]
 
         self._score: int = 0
         self._lives: int = STARTING_LIVES
-        self._time: int = self._level.time_limit
+        self._time: float = (
+            self._level.data.time_limit if self._level.data else 0.0
+        )
 
     def get_game_phase(self) -> GamePhase:
         return self._phase
@@ -60,11 +66,8 @@ class GameModel(ModelProtocol):
     def is_game_over(self) -> bool:
         return self._level.pacgums == 0 or self._lives == 0
 
-    def update(self, delta_time: float) -> None:
-        pass
-
     def set_player_input(self, direction: Direction) -> None:
-        pass
+        self._pacman.direction = direction
 
     def get_top_scores(self) -> list[HighscoreEntry]:
         return self._highscores.get_top_scores(10)
@@ -80,3 +83,19 @@ class GameModel(ModelProtocol):
 
     def trigger_cheat(self, cheat: CheatType) -> None:
         pass
+
+    def update(self, delta_time: float) -> None:
+        self._pacman.update(delta_time)
+
+        ghost_info = {
+            ghost.type: {
+                "position": (ghost.y, ghost.x),
+                "target": ghost._target_tile
+            }
+            for ghost in self._ghosts
+        }
+
+        for ghost in self._ghosts:
+            ghost.update(
+                delta_time, self._level, self.get_pacman(), ghost_info
+            )

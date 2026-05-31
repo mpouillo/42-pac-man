@@ -42,13 +42,15 @@ class LevelData(BaseModel):
 class Level:
     def __init__(self, level_id: int = 1) -> None:
         self.id: int = level_id
-        self.grid: list[list[CellState]] = []
-        self.time_limit: int = 0
-        self.difficulty: Optional[DifficultySettings] = None
+        self.grid: List[List[CellState]] = []
+        self.data: Optional[LevelData] = None
 
         self._remaining_pacgums: int = 0
 
-        self._load_level_data()
+        try:
+            self._load_level_data()
+        except Exception as e:
+            raise ValueError(f"Error loading data for level {level_id}: {e}")
 
     def __str__(self) -> str:
         return str(self.__dict__)
@@ -76,27 +78,43 @@ class Level:
         self.grid[y][x] = state
         return True
 
+    def get_pacman_spawn(self) -> Position:
+        if not self.data:
+            return Position(x=0, y=0)
+
+        return Position(
+            x=self.data.pacman_spawn.x,
+            y=self.data.pacman_spawn.y
+        )
+
+    def get_ghost_spawn(self, ghost_type: GhostType) -> Position:
+        if not self.data:
+            return Position(x=0, y=0)
+
+        raw_pos = self.data.ghost_spawns[ghost_type]
+        return Position(x=raw_pos.x * 2 + 1, y=raw_pos.y * 2 + 1)
+
     def _load_level_data(self) -> None:
         file_path = LEVELS_DIR / f"level_{self.id}.json"
-        data = LevelData.model_validate_json(file_path.read_text())
-
-        self._time_limit = data.time_limit
-        self.difficulty = data.difficulty_settings
+        self.data = LevelData.model_validate_json(
+            file_path.read_text()
+        )
 
         maze = MazeGenerator(
-            size=(data.size_x, data.size_y),
-            seed=data.seed
+            size=(self.data.size_x, self.data.size_y),
+            seed=self.data.seed
         ).maze
 
-        self.grid = self._convert_maze_togrid(maze)
-        self._setup_spawns(data)
+        self.grid = self._convert_maze_to_grid(maze)
+        self.size = (len(self.grid), len(self.grid[0]))
+        self._setup_spawns(self.data)
 
         self._remaining_pacgums = sum(
             1 for row in self.grid for cell in row
             if cell in (CellState.PACGUM, CellState.SUPER_PACGUM)
         )
 
-    def _convert_maze_togrid(
+    def _convert_maze_to_grid(
         self,
         maze: List[List[int]]
     ) -> List[List[CellState]]:

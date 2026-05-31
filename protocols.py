@@ -22,10 +22,11 @@ class CheatType(Enum):
 
 
 class Direction(Enum):
+    """(x, y)"""
     UP = (0, -1)
+    RIGHT = (1, 0)
     DOWN = (0, 1)
     LEFT = (-1, 0)
-    RIGHT = (1, 0)
     NONE = (0, 0)
 
 
@@ -43,9 +44,10 @@ class PacmanState(Enum):
 
 
 class GhostState(Enum):
-    CHASING = 1
-    EDIBLE = 2
-    EATEN = 3
+    CHASE = 1
+    SCATTER = 2
+    IDLE = 3
+    DEAD = 4
 
 
 class GhostType(Enum):
@@ -53,11 +55,6 @@ class GhostType(Enum):
     RED = "Blinky"
     ORANGE = "Clyde"
     BLUE = "Inky"
-
-
-class GhostBehavior(Enum):
-    CHASE = 1
-    SCATTER = 2
 
 
 @dataclass
@@ -71,7 +68,6 @@ class EntityData:
 class GhostData(EntityData):
     type: GhostType
     state: GhostState
-    behavior: GhostBehavior
 
 
 @dataclass

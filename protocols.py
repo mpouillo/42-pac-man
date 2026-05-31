@@ -38,15 +38,16 @@ class CellState(Enum):
 
 
 class PacmanState(Enum):
-    ALIVE = 1
-    POWERED = 2
-    DEAD = 3
+    IDLE = 1
+    ALIVE = 2
+    POWERED = 3
+    DEAD = 4
 
 
 class GhostState(Enum):
-    CHASE = 1
-    SCATTER = 2
-    IDLE = 3
+    IDLE = 1
+    CHASE = 2
+    SCATTER = 3
     DEAD = 4
 
 

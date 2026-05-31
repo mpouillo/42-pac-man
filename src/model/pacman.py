@@ -6,7 +6,7 @@ class Pacman:
     def __init__(self) -> None:
         self.x: float = 0.0
         self.y: float = 0.0
-        self.direction: Direction = Direction.UP
+        self.direction: Direction = Direction.NONE
         self.state: PacmanState = PacmanState.ALIVE
 
         self._speed: float = PACMAN_SPEED

@@ -8,6 +8,7 @@ dependencies = [
     "flake8>=7.3.0",
     "mazegenerator",
     "mypy>=2.1.0",
+    "numpy>=2.4.6",
     "pip>=26.1.1",
     "pydantic>=2.13.4",
     "raylib>=5.5.0.4",

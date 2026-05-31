@@ -49,7 +49,7 @@ class Ghost:
         delta_time: float,
         level: Level,
         pacman: PacmanData,
-        ghost_info: Dict[GhostType, Dict[str, tuple[int, int]]]
+        ghost_info: Dict[GhostType, Dict[str, tuple[float, float]]]
     ) -> None:
         self._update_state(delta_time)
         self._calculate_target_tile(pacman, level, ghost_info)
@@ -70,7 +70,7 @@ class Ghost:
         self,
         pacman: PacmanData,
         level: Level,
-        ghost_info: Dict[GhostType, Dict[str, tuple[int, int]]]
+        ghost_info: Dict[GhostType, Dict[str, tuple[float, float]]]
     ) -> None:
         if self.state == GhostState.SCATTER and level.data:
             self._target_tile = (

@@ -12,6 +12,7 @@ from protocols import (
     ModelProtocol,
     PacmanData
 )
+from src.highscore import HighscoreManager
 from src.model.ghost import Ghost
 from src.model.level import Level
 from src.model.pacman import Pacman
@@ -21,6 +22,7 @@ class GameModel(ModelProtocol):
     def __init__(self) -> None:
         self._phase: GamePhase = GamePhase.MAIN_MENU
         self._level: Level = Level()
+        self._highscores = HighscoreManager()
         self._pacman: Pacman = Pacman()
         self._ghosts: List[Ghost] = [Ghost(GhostType(i)) for i in range(1, 4)]
 
@@ -44,19 +46,19 @@ class GameModel(ModelProtocol):
         return self._pacman.data
 
     def get_ghosts(self) -> list[GhostData]:
-        pass
+        return [ghost.data for ghost in self._ghosts]
 
     def get_maze(self) -> list[list[CellState]]:
-        pass
+        return self._level.grid
 
     def get_score(self) -> int:
-        pass
+        return self._score
 
     def get_lives(self) -> int:
-        pass
+        return self._lives
 
     def is_game_over(self) -> bool:
-        pass
+        return self._level.pacgums == 0 or self._lives == 0
 
     def update(self, delta_time: float) -> None:
         pass
@@ -65,10 +67,10 @@ class GameModel(ModelProtocol):
         pass
 
     def get_top_scores(self) -> list[HighscoreEntry]:
-        pass
+        return self._highscores.get_top_scores(10)
 
     def submit_score(self, player_name: str) -> bool:
-        pass
+        return self._highscores.add_entry(player_name, self._score)
 
     def trigger_cheat(self, cheat: CheatType) -> None:
         pass

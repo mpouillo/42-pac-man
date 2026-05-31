@@ -8,15 +8,12 @@ class HighscoreManager:
     def __init__(self) -> None:
         self._scores: Dict[str, List[int]] = defaultdict(list)
 
-    def add_entry(self, name: str, score: int) -> bool:
-        """Add an entry to highscores."""
-        try:
-            entry = HighscoreEntry(name=name, score=score)
-        except ValueError:
-            return False
+    def __str__(self) -> str:
+        return str(self._scores)
 
+    def add_entry(self, entry: HighscoreEntry) -> None:
+        """Add an entry to highscores."""
         self._scores[entry.name].append(entry.score)
-        return True
 
     def remove_entry(self, entry: HighscoreEntry) -> bool:
         """
@@ -29,7 +26,10 @@ class HighscoreManager:
         ):
             return False
 
-        self._scores[entry.name].append(entry.score)
+        idx = self._scores[entry.name].index(entry.score)
+        self._scores[entry.name].pop(idx)
+        if len(self._scores[entry.name]) == 0:
+            self._scores.pop(entry.name)
         return True
 
     def get_top_scores(self, amount: int) -> List[HighscoreEntry]:

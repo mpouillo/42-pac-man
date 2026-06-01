@@ -38,16 +38,17 @@ class CellState(Enum):
 
 
 class GhostState(Enum):
-    CHASE = auto()
-    SCATTER = auto()
-    FRIGHTENED = auto()
-    EATEN = auto()
+    # (name: str, is_lethal: bool, is_edible: bool)
+    CHASE = ("chase", True, False)
+    SCATTER = ("scatter", True, False)
+    FRIGHTENED = ("frightened", False, True)
+    FLASHING = ("flashing", False, True)
+    EATEN = ("eaten", False, False)
 
-
-class PacmanState(Enum):
-    ALIVE = auto()
-    POWERED = auto()
-    DEAD = auto()
+    def __init__(self, state_name: str, lethal: bool, edible: bool):
+        self.state_name = state_name
+        self.is_lethal = lethal
+        self.is_edible = edible
 
 
 class GhostType(Enum):
@@ -72,7 +73,7 @@ class GhostData(EntityData):
 
 @dataclass
 class PacmanData(EntityData):
-    state: PacmanState
+    ...
 
 
 @dataclass

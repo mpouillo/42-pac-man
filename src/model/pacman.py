@@ -1,7 +1,7 @@
 import math
 
 from constants import PACMAN_SPEED
-from protocols import CellState, Direction, PacmanData, PacmanState
+from protocols import CellState, Direction, PacmanData
 from src.model.level import Level
 
 
@@ -11,7 +11,7 @@ class Pacman:
         self.y: float = level.data.pacman_spawn.y
         self.direction: Direction = Direction.LEFT
         self.queued_direction: Direction = Direction.NONE
-        self.state: PacmanState = PacmanState.ALIVE
+        self.alive: bool = True
 
         self._speed: float = PACMAN_SPEED
         self._timer: float = 0.0
@@ -23,27 +23,13 @@ class Pacman:
             x=self.x,
             y=self.y,
             direction=self.direction,
-            state=self.state
         )
-
-    def run(self) -> None:
-        print("run!")
-        self.state = PacmanState.ALIVE
-
-    def power_up(self, duration: float) -> None:
-        print("powered up!")
-        self.state = PacmanState.POWERED
-        self._timer = duration
-
-    def die(self) -> None:
-        self.state = PacmanState.DEAD
 
     def update(self, delta_time: float) -> None:
         self._calculate_movement(delta_time)
-        self._update_state(delta_time)
 
     def _calculate_movement(self, delta_time: float) -> None:
-        if self.direction == Direction.NONE or self.state == PacmanState.DEAD:
+        if self.direction == Direction.NONE:
             return
 
         # Snap to center of cells
@@ -80,13 +66,3 @@ class Pacman:
 
         self.x = nx
         self.y = ny
-
-    def _update_state(self, delta_time: float) -> None:
-        if self._timer > 0:
-            self._timer -= delta_time
-
-        match self.state:
-            case PacmanState.POWERED:
-                if self._timer <= 0:
-                    self._timer = 0
-                    self.run()

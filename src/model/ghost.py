@@ -1,7 +1,7 @@
 import math
 import numpy
-from typing import Dict, Tuple
 
+from constants import GHOST_FLASH_THRESHOLD
 from protocols import (
     CellState,
     Direction,
@@ -17,16 +17,16 @@ class Ghost:
     def __init__(self, ghost_type: GhostType, level: Level) -> None:
         self.type: GhostType = ghost_type
         self._level: Level = level
-        self.spawn: Tuple[int, int] = level.data.ghost_spawns[self.type].values
+        self.spawn: tuple[int, int] = level.data.ghost_spawns[self.type].values
         self.x: float = self.spawn[0]
         self.y: float = self.spawn[1]
         self.direction: Direction = Direction.NONE
-        self.state: GhostState = GhostState.SCATTER
+        self.state: GhostState = GhostState.CHASE
 
-        self._speed: float = level.data.difficulty_settings.ghost_speed
+        self._speed: float = level.data.difficulty.ghost_speed
         self._behavior_timer: float = 0.0
-        self._target_tile: Tuple[int, int] = (0, 0)     # (x, y)
-        self._checkpoint: Tuple[float, float] = (0, 0)  # (x, y)
+        self._target_tile: tuple[int, int] = (0, 0)     # (x, y)
+        self._checkpoint: tuple[float, float] = (0, 0)  # (x, y)
 
     @property
     def data(self) -> GhostData:
@@ -39,16 +39,10 @@ class Ghost:
             state=self.state,
         )
 
-    def chase(self) -> None:
-        print("chasing!")
-        self.state = GhostState.CHASE
-
-    def scatter(self) -> None:
-        self.state = GhostState.SCATTER
-
-    def run_away(self, duration: float) -> None:
-        self.state = GhostState.FRIGHTENED
-        self._behavior_timer = duration
+    def set_state(self, state: GhostState, duration: float = 0) -> None:
+        if duration:
+            self._behavior_timer = duration
+        self.state = state
 
     def die(self) -> None:
         print(f"dead! going to {self._target_tile}")
@@ -59,29 +53,32 @@ class Ghost:
         self,
         delta_time: float,
         pacman: PacmanData,
-        ghost_info: Dict[GhostType, Dict[str, tuple[float, float]]]
+        red_ghost: GhostData
     ) -> None:
         self._update_state(delta_time)
-        self._calculate_target_tile(pacman, ghost_info)
+        self._calculate_target_tile(pacman, red_ghost)
         self._move_towards_target(delta_time)
 
     def _update_state(self, delta_time: float) -> None:
         if self._behavior_timer > 0:
             self._behavior_timer -= delta_time
 
-        match self.state:
-            case GhostState.FRIGHTENED:
-                if self._behavior_timer <= 0:
-                    self._behavior_timer = 0
-                    self.chase()
-            case GhostState.EATEN:
-                if (self.x, self.y) == self.spawn:
-                    self.chase()
+        if self.state == GhostState.FRIGHTENED:
+            if self._behavior_timer <= GHOST_FLASH_THRESHOLD:
+                self.set_state(GhostState.FLASHING)
+
+        if self.state == GhostState.FLASHING:
+            if self._behavior_timer <= 0:
+                self.set_state(GhostState.CHASE)
+
+        elif self.state == GhostState.EATEN:
+            if (self.x, self.y) == self.spawn:
+                self.set_state(GhostState.CHASE)
 
     def _calculate_target_tile(
         self,
         pacman: PacmanData,
-        ghost_info: Dict[GhostType, Dict[str, tuple[float, float]]]
+        red_ghost: GhostData
     ) -> None:
         if self.state == GhostState.SCATTER:
             self._target_tile = self.spawn
@@ -113,8 +110,10 @@ class Ghost:
                     self._target_tile = (int(pacman.x), int(pacman.y))
             elif self.type == GhostType.BLUE:
                 # Corners Pacman relative to Blinky's position
-                red_pos = numpy.array(ghost_info[GhostType.RED]["position"])
-                pink_target = numpy.array(ghost_info[GhostType.PINK]["target"])
+                pacman_pos = numpy.array((int(pacman.x), int(pacman.y)))
+                future_pos = numpy.array(pacman.direction.value) * 2
+                pink_target = tuple(numpy.add(pacman_pos, future_pos))
+                red_pos = numpy.array([red_ghost.x, red_ghost.y])
                 difference = numpy.subtract(pink_target, red_pos)
                 self._target_tile = tuple(numpy.add(pink_target, difference))
             else:

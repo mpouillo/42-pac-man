@@ -12,8 +12,7 @@ from protocols import (
     GhostType,
     HighscoreEntry,
     ModelProtocol,
-    PacmanData,
-    PacmanState
+    PacmanData
 )
 from src.config import ConfigData
 from src.highscore import HighscoreManager
@@ -109,17 +108,15 @@ class GameModel(ModelProtocol):
         self._cheats.append(cheat)
 
     def update(self, delta_time: float) -> None:
-        if (
-            self._phase != GamePhase.PLAYING
-            or self._pacman.state == PacmanState.DEAD
-        ):
+        if self._phase != GamePhase.PLAYING:
             return
+
+        self._level_timer -= delta_time
 
         if self._lives <= 0:
             self._phase = GamePhase.GAME_OVER
         if self._level.pacgums == 0:
             self._phase = GamePhase.WIN
-        self._level_timer -= delta_time
         if self._level_timer <= 0:
             self._lose_round()
 
@@ -128,18 +125,16 @@ class GameModel(ModelProtocol):
 
         for ghost in self._ghosts:
             if self._did_collide(ghost):
-                if ghost.state == GhostState.EATEN:
-                    return
-                if self._pacman.state == PacmanState.POWERED:
+                if ghost.state.is_edible:
                     self._score += self._config.points_per_ghost
                     ghost.die()
-                else:
+                elif ghost.state.is_lethal:
                     if CheatType.INVINCIBILITY in self._cheats:
                         return
                     self._lose_round()
+                    return
 
     def _lose_round(self) -> None:
-        self._pacman.state = PacmanState.DEAD
         self._lives -= 1
         self._reset()
 
@@ -152,7 +147,11 @@ class GameModel(ModelProtocol):
             case CellState.SUPER_PACGUM:
                 self._level.update_cell(*rpos, CellState.EMPTY)
                 self._score += self._config.points_per_super_pacgum
-                self._pacman.power_up(self._config.power_up_duration)
+                for ghost in self._ghosts:
+                    ghost.set_state(
+                        GhostState.FRIGHTENED,
+                        self._level.data.difficulty.fear_duration
+                    )
 
         if CheatType.SPEED_BOOST in self._cheats:
             delta_time *= SPEED_BOOST_CHEAT
@@ -164,16 +163,14 @@ class GameModel(ModelProtocol):
         if CheatType.GHOST_FREEZE in self._cheats:
             return
 
-        ghost_info = {
-            ghost.type: {
-                "position": (ghost.y, ghost.x),
-                "target": ghost._target_tile
-            }
-            for ghost in self._ghosts
-        }
+        red_ghost = next(
+            (ghost.data for ghost in self._ghosts
+             if ghost.type == GhostType.RED),
+            Ghost(GhostType.RED, self._level).data
+        )
 
         for ghost in self._ghosts:
-            ghost.update(delta_time, self.get_pacman(), ghost_info)
+            ghost.update(delta_time, self.get_pacman(), red_ghost)
 
     def _did_collide(self, ghost: Ghost) -> bool:
         """
@@ -189,6 +186,6 @@ class GameModel(ModelProtocol):
     def _reset(self) -> None:
         """Reset values and restart game."""
         self._phase = GamePhase.PLAYING
-        self._time = self._level.data.time_limit
+        self._level_timer = self._level.data.time_limit
         self._pacman = Pacman(self._level)
         self._ghosts = [Ghost(ghost, self._level) for ghost in list(GhostType)]

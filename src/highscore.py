@@ -7,7 +7,8 @@ from protocols import HighscoreEntry
 
 
 class HighscoreManager:
-    def __init__(self) -> None:
+    def __init__(self, file_path: str) -> None:
+        self._file_path: Path = Path(file_path)
         self._scores: List[HighscoreEntry] = []
 
     def __str__(self) -> str:
@@ -41,18 +42,18 @@ class HighscoreManager:
 
         return top_scores
 
-    def load_scores(self, file_path: Path) -> None:
-        if not file_path.exists() or file_path.is_dir():
+    def load_scores(self) -> None:
+        if not self._file_path.exists() or self._file_path.is_dir():
             raise ValueError("File does not exist.")
 
-        raw_data = file_path.read_bytes()
+        raw_data = self._file_path.read_bytes()
         adapter = TypeAdapter(list[HighscoreEntry])
         for entry in adapter.validate_json(raw_data):
             self.add_entry(entry)
 
-    def save_scores(self, file_path: Path) -> None:
-        file_path.parent.mkdir(parents=True, exist_ok=True)
+    def save_scores(self) -> None:
+        self._file_path.parent.mkdir(parents=True, exist_ok=True)
 
         adapter = TypeAdapter(list[HighscoreEntry])
         json_bytes = adapter.dump_json(self._scores, indent=4)
-        file_path.write_bytes(json_bytes)
+        self._file_path.write_bytes(json_bytes)

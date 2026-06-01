@@ -1,6 +1,5 @@
 from typing import List
 
-from constants import STARTING_LIVES
 from protocols import (
     CellState,
     CheatType,
@@ -12,6 +11,7 @@ from protocols import (
     ModelProtocol,
     PacmanData
 )
+from src.config import ConfigData
 from src.highscore import HighscoreManager
 from src.model.ghost import Ghost
 from src.model.level import Level
@@ -19,10 +19,11 @@ from src.model.pacman import Pacman
 
 
 class GameModel(ModelProtocol):
-    def __init__(self) -> None:
+    def __init__(self, config: ConfigData) -> None:
+        self._config = config
         self._phase: GamePhase = GamePhase.MAIN_MENU
         self._level: Level = Level()
-        self._highscores = HighscoreManager()
+        self._highscore_manager = HighscoreManager(config.highscore_filename)
         self._pacman: Pacman = Pacman()
         self._ghosts: List[Ghost] = [
             Ghost(ghost, self._level.data.difficulty_settings.ghost_speed
@@ -31,7 +32,7 @@ class GameModel(ModelProtocol):
         ]
 
         self._score: int = 0
-        self._lives: int = STARTING_LIVES
+        self._lives: int = config.lives
         self._time: float = (
             self._level.data.time_limit if self._level.data else 0.0
         )
@@ -70,7 +71,7 @@ class GameModel(ModelProtocol):
         self._pacman.direction = direction
 
     def get_top_scores(self) -> list[HighscoreEntry]:
-        return self._highscores.get_top_scores(10)
+        return self._highscore_manager.get_top_scores(10)
 
     def submit_score(self, player_name: str) -> bool:
         try:
@@ -78,7 +79,8 @@ class GameModel(ModelProtocol):
         except ValueError:
             return False
 
-        self._highscores.add_entry(entry)
+        self._highscore_manager.add_entry(entry)
+        self._highscore_manager.save_scores()
         return True
 
     def trigger_cheat(self, cheat: CheatType) -> None:

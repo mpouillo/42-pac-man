@@ -15,5 +15,13 @@
 		- Updates to level_{id}.json file structure and values
 	: Completed Ghost logic (pathfinding)
 	: Created HighscoreManager class
-	: Updated GameModel to reflect changes
-	: Updates to protocols.py (Dataclasses, Enums)
+	: Updated GameModel, protocols.py
+
+2026-06-01
+	: Various additions to Model classes
+		- Completed Pacman logic
+		- Improvements and fixes to Ghost logic
+		- Improvement to Level data management
+	: Updates to protocols.py
+	: Created config.py and config.json
+	: Created stubs for GameController and __main__

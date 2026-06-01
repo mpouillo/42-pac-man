@@ -139,7 +139,7 @@ class ModelProtocol(Protocol):
         """
         ...
 
-    def trigger_cheat(self, cheat: CheatType) -> None:
+    def toggle_cheat(self, cheat: CheatType) -> None:
         """Instantly mutates game rules depending on cheat type."""
         ...
 

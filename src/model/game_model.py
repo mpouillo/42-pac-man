@@ -1,5 +1,7 @@
+import math
 from typing import List
 
+from constants import SPEED_BOOST_CHEAT
 from protocols import (
     CellState,
     CheatType,
@@ -9,7 +11,8 @@ from protocols import (
     GhostType,
     HighscoreEntry,
     ModelProtocol,
-    PacmanData
+    PacmanData,
+    PacmanState
 )
 from src.config import ConfigData
 from src.highscore import HighscoreManager
@@ -22,20 +25,17 @@ class GameModel(ModelProtocol):
     def __init__(self, config: ConfigData) -> None:
         self._config = config
         self._phase: GamePhase = GamePhase.MAIN_MENU
+        self._cheats: List[CheatType] = []
         self._level: Level = Level()
         self._highscore_manager = HighscoreManager(config.highscore_filename)
-        self._pacman: Pacman = Pacman()
+        self._pacman: Pacman = Pacman(self._level.data)
         self._ghosts: List[Ghost] = [
-            Ghost(ghost, self._level.data.difficulty_settings.ghost_speed
-                  if self._level.data else 1.0)
-            for ghost in list(GhostType)
+            Ghost(ghost, self._level.data) for ghost in list(GhostType)
         ]
 
         self._score: int = 0
         self._lives: int = config.lives
-        self._time: float = (
-            self._level.data.time_limit if self._level.data else 0.0
-        )
+        self._level_timer: float = self._level.data.time_limit
 
     def get_game_phase(self) -> GamePhase:
         return self._phase
@@ -47,7 +47,7 @@ class GameModel(ModelProtocol):
         return self._level.id if self._level else 0
 
     def get_remaining_time(self) -> float:
-        return self._time
+        return self._level_timer
 
     def get_pacman(self) -> PacmanData:
         return self._pacman.data
@@ -68,7 +68,22 @@ class GameModel(ModelProtocol):
         return self._level.pacgums == 0 or self._lives == 0
 
     def set_player_input(self, direction: Direction) -> None:
-        self._pacman.direction = direction
+        opposites = {
+            Direction.UP: Direction.DOWN,
+            Direction.DOWN: Direction.UP,
+            Direction.LEFT: Direction.RIGHT,
+            Direction.RIGHT: Direction.LEFT,
+            Direction.NONE: Direction.NONE
+        }
+
+        if (
+            opposites[self._pacman.direction] == direction
+            or self._pacman.direction == Direction.NONE
+        ):
+            self._pacman.direction = direction
+            return
+
+        self._pacman.queued_direction = direction
 
     def get_top_scores(self) -> list[HighscoreEntry]:
         return self._highscore_manager.get_top_scores(10)
@@ -83,11 +98,52 @@ class GameModel(ModelProtocol):
         self._highscore_manager.save_scores()
         return True
 
-    def trigger_cheat(self, cheat: CheatType) -> None:
-        pass
+    def toggle_cheat(self, cheat: CheatType) -> None:
+        if cheat == CheatType.LEVEL_SKIP:
+            self._level.go_next()
+            return
+
+        if cheat in self._cheats:
+            self._cheats.remove(cheat)
+        self._cheats.append(cheat)
 
     def update(self, delta_time: float) -> None:
-        self._pacman.update(delta_time)
+        if self._phase != GamePhase.PLAYING:
+            return
+
+        if self._lives <= 0:
+            self._phase = GamePhase.GAME_OVER
+        if self._level.pacgums == 0:
+            self._phase = GamePhase.WIN
+        self._level_timer -= delta_time
+
+        self._pacman_actions(delta_time)
+        self._ghost_actions(delta_time)
+
+        if self._did_collide():
+            self._pacman.state = PacmanState.DEAD
+            self._lives -= 1
+            self._reset()
+
+    def _pacman_actions(self, delta_time: float) -> None:
+        rpos = (round(self._pacman.x), round(self._pacman.y))
+        match self._level.grid[rpos[1]][rpos[0]]:
+            case CellState.PACGUM:
+                self._level.update_cell(*rpos, CellState.EMPTY)
+                self._score += self._config.points_per_pacgum
+            case CellState.SUPER_PACGUM:
+                self._level.update_cell(*rpos, CellState.EMPTY)
+                self._score += self._config.points_per_super_pacgum
+
+        if CheatType.SPEED_BOOST in self._cheats:
+            delta_time *= SPEED_BOOST_CHEAT
+
+        self._pacman.update(delta_time, self._level)
+
+    def _ghost_actions(self, delta_time: float) -> None:
+        """Update Ghost positions."""
+        if CheatType.GHOST_FREEZE in self._cheats:
+            return
 
         ghost_info = {
             ghost.type: {
@@ -101,3 +157,25 @@ class GameModel(ModelProtocol):
             ghost.update(
                 delta_time, self._level, self.get_pacman(), ghost_info
             )
+
+    def _did_collide(self) -> bool:
+        """
+        Check for collisions (distance < 0.5)
+        between Pac-Man and Ghosts.
+        """
+        if CheatType.INVINCIBILITY in self._cheats:
+            return False
+
+        for ghost in self.get_ghosts():
+            gpos = [ghost.x, ghost.y]
+            ppos = [self._pacman.x, self._pacman.y]
+            if math.dist(gpos, ppos) < 0.5:
+                return True
+        return False
+
+    def _reset(self) -> None:
+        """Reset values and restart game."""
+        self._phase: GamePhase = GamePhase.PLAYING
+        self._time = self._level.data.time_limit
+        self._pacman = Pacman(self._level.data)
+        self._ghosts = [Ghost(g, self._level.data) for g in list(GhostType)]

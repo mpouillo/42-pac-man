@@ -9,6 +9,7 @@ class ConfigData(BaseModel):
     points_per_pacgum: int
     points_per_super_pacgum: int
     points_per_ghost: int
+    power_up_duration: float
 
 
 def load_config(file_path: str) -> ConfigData:
@@ -26,7 +27,6 @@ def load_config(file_path: str) -> ConfigData:
             line for line in raw_data.split('\n')
             if not line.strip().startswith('#')
         ])
-        print(clean_data)
         validated_data = ConfigData.model_validate_json(clean_data)
     except Exception as e:
         raise ValueError(f"Invalid data in config: {e}")

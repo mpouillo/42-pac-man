@@ -10,6 +10,10 @@ class Position(BaseModel):
     x: int
     y: int
 
+    @property
+    def values(self) -> tuple[int, int]:
+        return self.x, self.y
+
 
 class DifficultySettings(BaseModel):
     ghost_speed: float
@@ -90,13 +94,13 @@ class Level:
         file_path = LEVELS_DIR / f"level_{self.id}.json"
         return LevelData.model_validate_json(file_path.read_text())
 
-    def _load_grid(self):
+    def _load_grid(self) -> List[List[CellState]]:
         gen = MazeGenerator(
             size=(self.data.size_x, self.data.size_y),
             seed=self.data.seed
         )
         grid = self._convert_maze_to_grid(gen.maze)
-        grid = self._setup_spawns(grid, self.data)
+        grid = self._setup_entities(grid, self.data)
         return grid
 
     def _convert_maze_to_grid(
@@ -137,7 +141,7 @@ class Level:
 
         return grid
 
-    def _setup_spawns(
+    def _setup_entities(
         self,
         grid: List[List[CellState]],
         data: LevelData
@@ -148,11 +152,6 @@ class Level:
             if 0 <= gy < len(grid) and 0 <= gx < len(grid[0]):
                 grid[gy][gx] = CellState.SUPER_PACGUM
 
-        spawns = [data.pacman_spawn] + list(data.ghost_spawns.values())
-        for pos in spawns:
-            if grid[gy][gx] in (
-                CellState.PACGUM, CellState.SUPER_PACGUM
-            ):
-                grid[gy][gx] = CellState.EMPTY
+        grid[data.pacman_spawn.y][data.pacman_spawn.x] = CellState.EMPTY
 
         return grid

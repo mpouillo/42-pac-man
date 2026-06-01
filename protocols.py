@@ -1,24 +1,24 @@
 from typing import Protocol
 from dataclasses import dataclass
-from enum import Enum
+from enum import Enum, auto
 
 
 class GamePhase(Enum):
-    MAIN_MENU = 1
-    HIGHSCORES_MENU = 2
-    INSTRUCTIONS_MENU = 3
-    PLAYING = 4
-    PAUSED = 5
-    GAME_OVER = 6
-    WIN = 7
+    MAIN_MENU = auto()
+    HIGHSCORES_MENU = auto()
+    INSTRUCTIONS_MENU = auto()
+    PLAYING = auto()
+    PAUSED = auto()
+    GAME_OVER = auto()
+    WIN = auto()
 
 
 class CheatType(Enum):
-    INVINCIBILITY = 1
-    LEVEL_SKIP = 2
-    GHOST_FREEZE = 3
-    SPEED_BOOST = 4
-    WALL_JUMP = 5
+    INVINCIBILITY = auto()
+    LEVEL_SKIP = auto()
+    GHOST_FREEZE = auto()
+    SPEED_BOOST = auto()
+    WALL_JUMP = auto()
 
 
 class Direction(Enum):
@@ -31,24 +31,23 @@ class Direction(Enum):
 
 
 class CellState(Enum):
-    EMPTY = 0
-    WALL = 1
-    PACGUM = 2
-    SUPER_PACGUM = 3
-
-
-class PacmanState(Enum):
-    IDLE = 1
-    ALIVE = 2
-    POWERED = 3
-    DEAD = 4
+    EMPTY = auto()
+    WALL = auto()
+    PACGUM = auto()
+    SUPER_PACGUM = auto()
 
 
 class GhostState(Enum):
-    IDLE = 1
-    CHASE = 2
-    SCATTER = 3
-    DEAD = 4
+    CHASE = auto()
+    SCATTER = auto()
+    FRIGHTENED = auto()
+    EATEN = auto()
+
+
+class PacmanState(Enum):
+    ALIVE = auto()
+    POWERED = auto()
+    DEAD = auto()
 
 
 class GhostType(Enum):

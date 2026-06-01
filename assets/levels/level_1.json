@@ -1,7 +1,7 @@
 {
     "size_x": 10,
     "size_y": 10,
-    "time_limit": 60,
+    "time_limit": 120,
     "seed": 42,
     "pacman_spawn": {
         "x": 5,
@@ -45,6 +45,6 @@
     ],
     "difficulty_settings": {
         "ghost_speed": 1.0,
-        "frightened_duration": 7.0
+        "frightened_duration": 15.0
     }
 }

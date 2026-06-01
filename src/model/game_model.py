@@ -8,6 +8,7 @@ from protocols import (
     Direction,
     GamePhase,
     GhostData,
+    GhostState,
     GhostType,
     HighscoreEntry,
     ModelProtocol,
@@ -28,9 +29,9 @@ class GameModel(ModelProtocol):
         self._cheats: List[CheatType] = []
         self._level: Level = Level()
         self._highscore_manager = HighscoreManager(config.highscore_filename)
-        self._pacman: Pacman = Pacman(self._level.data)
+        self._pacman: Pacman = Pacman(self._level)
         self._ghosts: List[Ghost] = [
-            Ghost(ghost, self._level.data) for ghost in list(GhostType)
+            Ghost(ghost, self._level) for ghost in list(GhostType)
         ]
 
         self._score: int = 0
@@ -108,7 +109,10 @@ class GameModel(ModelProtocol):
         self._cheats.append(cheat)
 
     def update(self, delta_time: float) -> None:
-        if self._phase != GamePhase.PLAYING:
+        if (
+            self._phase != GamePhase.PLAYING
+            or self._pacman.state == PacmanState.DEAD
+        ):
             return
 
         if self._lives <= 0:
@@ -116,14 +120,28 @@ class GameModel(ModelProtocol):
         if self._level.pacgums == 0:
             self._phase = GamePhase.WIN
         self._level_timer -= delta_time
+        if self._level_timer <= 0:
+            self._lose_round()
 
         self._pacman_actions(delta_time)
         self._ghost_actions(delta_time)
 
-        if self._did_collide():
-            self._pacman.state = PacmanState.DEAD
-            self._lives -= 1
-            self._reset()
+        for ghost in self._ghosts:
+            if self._did_collide(ghost):
+                if ghost.state == GhostState.EATEN:
+                    return
+                if self._pacman.state == PacmanState.POWERED:
+                    self._score += self._config.points_per_ghost
+                    ghost.die()
+                else:
+                    if CheatType.INVINCIBILITY in self._cheats:
+                        return
+                    self._lose_round()
+
+    def _lose_round(self) -> None:
+        self._pacman.state = PacmanState.DEAD
+        self._lives -= 1
+        self._reset()
 
     def _pacman_actions(self, delta_time: float) -> None:
         rpos = (round(self._pacman.x), round(self._pacman.y))
@@ -134,11 +152,12 @@ class GameModel(ModelProtocol):
             case CellState.SUPER_PACGUM:
                 self._level.update_cell(*rpos, CellState.EMPTY)
                 self._score += self._config.points_per_super_pacgum
+                self._pacman.power_up(self._config.power_up_duration)
 
         if CheatType.SPEED_BOOST in self._cheats:
             delta_time *= SPEED_BOOST_CHEAT
 
-        self._pacman.update(delta_time, self._level)
+        self._pacman.update(delta_time)
 
     def _ghost_actions(self, delta_time: float) -> None:
         """Update Ghost positions."""
@@ -154,28 +173,22 @@ class GameModel(ModelProtocol):
         }
 
         for ghost in self._ghosts:
-            ghost.update(
-                delta_time, self._level, self.get_pacman(), ghost_info
-            )
+            ghost.update(delta_time, self.get_pacman(), ghost_info)
 
-    def _did_collide(self) -> bool:
+    def _did_collide(self, ghost: Ghost) -> bool:
         """
         Check for collisions (distance < 0.5)
         between Pac-Man and Ghosts.
         """
-        if CheatType.INVINCIBILITY in self._cheats:
-            return False
-
-        for ghost in self.get_ghosts():
-            gpos = [ghost.x, ghost.y]
-            ppos = [self._pacman.x, self._pacman.y]
-            if math.dist(gpos, ppos) < 0.5:
-                return True
+        ghost_pos = [ghost.x, ghost.y]
+        pacman_pos = [self._pacman.x, self._pacman.y]
+        if math.dist(ghost_pos, pacman_pos) < 0.5:
+            return True
         return False
 
     def _reset(self) -> None:
         """Reset values and restart game."""
-        self._phase: GamePhase = GamePhase.PLAYING
+        self._phase = GamePhase.PLAYING
         self._time = self._level.data.time_limit
-        self._pacman = Pacman(self._level.data)
-        self._ghosts = [Ghost(g, self._level.data) for g in list(GhostType)]
+        self._pacman = Pacman(self._level)
+        self._ghosts = [Ghost(ghost, self._level) for ghost in list(GhostType)]

@@ -10,18 +10,18 @@ from protocols import (
     GhostType,
     PacmanData
 )
-from src.model.level import Level
+from src.model.level import Level, LevelData
 
 
 class Ghost:
-    def __init__(self, ghost_type: GhostType, speed: float) -> None:
+    def __init__(self, ghost_type: GhostType, level_data: LevelData) -> None:
         self.type: GhostType = ghost_type
-        self.x: float = 0.0
-        self.y: float = 0.0
+        self.x: float = level_data.ghost_spawns[self.type].x
+        self.y: float = level_data.ghost_spawns[self.type].y
         self.direction: Direction = Direction.NONE
         self.state: GhostState = GhostState.IDLE
 
-        self._speed: float = speed
+        self._speed: float = level_data.difficulty_settings.ghost_speed
         self._behavior_timer: float = 0.0
         self._target_tile: Tuple[int, int] = (0, 0)     # (x, y)
         self._checkpoint: Tuple[float, float] = (0, 0)  # (x, y)
@@ -93,8 +93,8 @@ class Ghost:
                 distance = abs(math.sqrt(
                     (self.x - pacman.x) ** 2 + (self.y - pacman.y) ** 2
                 ))
-                if distance <= 8:
-                    spawn = level.get_ghost_spawn(self.type)
+                if distance <= 8 and level.data:
+                    spawn = level.data.ghost_spawns[self.type]
                     self._target_tile = (spawn.x, spawn.y)
                 else:
                     self._target_tile = (int(pacman.x), int(pacman.y))
@@ -151,7 +151,7 @@ class Ghost:
         current_y = self._checkpoint[1]
         best_checkpoint = (current_x, current_y)
 
-        for d in directions:
+        for i, d in enumerate(directions):
             if (
                 d == opposites[self.direction]
                 and self.direction != Direction.NONE
@@ -175,6 +175,13 @@ class Ghost:
                     min_distance = dist_sq
                     best_direction = d
                     best_checkpoint = (float(next_x), float(next_y))
+
+            # Prevent getting stuck in dead ends
+            if (
+                i == len(directions) - 1
+                and best_checkpoint == (current_x, current_y)
+            ):
+                best_direction = opposites[self.direction]
 
         self.direction = best_direction
         self._checkpoint = best_checkpoint

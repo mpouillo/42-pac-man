@@ -10,3 +10,4 @@ CONFIG_FILE_PATH = PROJECT_ROOT / "config.json"
 # Game data
 STARTING_LIVES: int = 3
 PACMAN_SPEED: float = 1.5
+SPEED_BOOST_CHEAT: float = 2.0

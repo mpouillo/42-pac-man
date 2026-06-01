@@ -43,8 +43,8 @@
             "y": 19
         }
     ],
-    "difficulty_settings": {
+    "difficulty": {
         "ghost_speed": 2.0,
-        "frightened_duration": 10.0
+        "fear_duration": 10.0
     }
 }

@@ -17,7 +17,7 @@ class Position(BaseModel):
 
 class DifficultySettings(BaseModel):
     ghost_speed: float
-    frightened_duration: float
+    fear_duration: float
 
 
 class LevelData(BaseModel):
@@ -28,7 +28,7 @@ class LevelData(BaseModel):
     pacman_spawn: Position
     ghost_spawns: Dict[GhostType, Position]
     super_pacgums: List[Position]
-    difficulty_settings: DifficultySettings
+    difficulty: DifficultySettings
 
     @field_validator("ghost_spawns", mode="before")
     @classmethod

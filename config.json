@@ -1,5 +1,10 @@
 {
-    "highscore_filename": "highscore",
+    "highscores": "highscore.json",
+    "levels": [
+        "assets/levels/level_1.json",
+        "assets/levels/level_2.json",
+        "assets/levels/level_3.json"
+    ],
     "lives": 3,
     "points_per_pacgum": 10,
     "points_per_super_pacgum": 50,

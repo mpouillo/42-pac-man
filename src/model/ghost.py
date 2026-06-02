@@ -1,7 +1,7 @@
 import math
 import numpy
 
-from constants import GHOST_FLASH_THRESHOLD
+from constants import GHOST_FLASH_THRESHOLD, SPEED_FACTOR
 from protocols import (
     CellState,
     Direction,
@@ -23,10 +23,9 @@ class Ghost:
         self.direction: Direction = Direction.NONE
         self.state: GhostState = GhostState.CHASE
 
-        self._speed: float = level.data.difficulty.ghost_speed
+        self._speed: float = level.data.difficulty.ghost_speed * SPEED_FACTOR
         self._behavior_timer: float = 0.0
         self._target_tile: tuple[int, int] = (0, 0)     # (x, y)
-        self._checkpoint: tuple[float, float] = (0, 0)  # (x, y)
 
     @property
     def data(self) -> GhostData:
@@ -42,12 +41,19 @@ class Ghost:
     def set_state(self, state: GhostState, duration: float = 0) -> None:
         if duration:
             self._behavior_timer = duration
+
+        # Go backwards when turning frightened
+        if (
+            self.state == GhostState.CHASE
+            and state == GhostState.FRIGHTENED
+        ):
+            self.direction = self.direction.opposite
+
         self.state = state
 
     def die(self) -> None:
         print(f"dead! going to {self._target_tile}")
         self.state = GhostState.EATEN
-        self.direction = self._choose_best_direction(reverse_allowed=True)
 
     def update(
         self,
@@ -56,8 +62,20 @@ class Ghost:
         red_ghost: GhostData
     ) -> None:
         self._update_state(delta_time)
-        self._calculate_target_tile(pacman, red_ghost)
-        self._move_towards_target(delta_time)
+        self._snap_to_cells(delta_time)
+        self._compute_target(pacman, red_ghost)
+        self.direction = self._compute_direction(reverse_allowed=False)
+        self.x += self.direction.value[0] * self._speed * delta_time
+        self.y += self.direction.value[1] * self._speed * delta_time
+
+    def _snap_to_cells(self, delta_time: float) -> None:
+        """Snap to center of cells if boundary is crossed this frame."""
+        step_x = self.direction.value[0] * self._speed * delta_time
+        step_y = self.direction.value[1] * self._speed * delta_time
+        if step_x != 0 and math.floor(self.x) != math.floor(self.x + step_x):
+            self.x = round(self.x)
+        if step_y != 0 and math.floor(self.y) != math.floor(self.y + step_y):
+            self.y = round(self.y)
 
     def _update_state(self, delta_time: float) -> None:
         if self._behavior_timer > 0:
@@ -75,19 +93,21 @@ class Ghost:
             if (self.x, self.y) == self.spawn:
                 self.set_state(GhostState.CHASE)
 
-    def _calculate_target_tile(
+    def _compute_target(
         self,
         pacman: PacmanData,
         red_ghost: GhostData
     ) -> None:
         if self.state == GhostState.SCATTER:
+            # Go to spawn
             self._target_tile = self.spawn
         elif self.state == GhostState.FRIGHTENED:
-            self._target_tile = (
-                int(numpy.random.randint(0, self._level.data.size_x)),
-                int(numpy.random.randint(0, self._level.data.size_y))
-            )
+            # Go opposite of Pacman's position
+            dx = int(self.x) - int(pacman.x)
+            dy = int(self.y) - int(pacman.y)
+            self._target_tile = (int(self.x) + dx, int(self.y) + dy)
         elif self.state == GhostState.EATEN:
+            # Go to spawn
             self._target_tile = self.spawn
         else:
             if self.type == GhostType.PINK:
@@ -119,77 +139,25 @@ class Ghost:
             else:
                 self._target_tile = (0, 0)
 
-    def _move_towards_target(self, delta_time: float) -> None:
-        if self._checkpoint == (0.0, 0.0):
-            self._checkpoint = (float(int(self.x)), float(int(self.y)))
-
-        dx = self._checkpoint[0] - self.x
-        dy = self._checkpoint[1] - self.y
-        cp_distance = math.hypot(dx, dy)
-
-        move_distance = self._speed * delta_time
-
-        if (
-            move_distance >= cp_distance
-            or self.direction == Direction.NONE
-        ):
-            self.x = float(self._checkpoint[0])
-            self.y = float(self._checkpoint[1])
-            self.direction = self._choose_best_direction()
-        else:
-            self.x += self.direction.value[0] * move_distance
-            self.y += self.direction.value[1] * move_distance
-
-    def _choose_best_direction(
+    def _compute_direction(
         self,
         reverse_allowed: bool = False
     ) -> Direction:
-        directions = [
-            Direction.UP,
-            Direction.LEFT,
-            Direction.DOWN,
-            Direction.RIGHT
-        ]
+        # At center of cell
+        if self.x == math.floor(self.x) and self.y == math.floor(self.y):
+            cx, cy = int(self.x), int(self.y)
+            choices = Direction.best_from_points((cx, cy), self._target_tile)
 
-        best_direction = self.direction
-        min_distance = float('inf')
+            if not reverse_allowed and self.direction.opposite in choices:
+                # Append opposite direction at the end as a last resort
+                opposite = self.direction.opposite
+                choices.remove(opposite)
+                choices.append(opposite)
+            for choice in choices:
+                dx = cx + choice.value[0]
+                dy = cy + choice.value[1]
+                if self._level.grid[dy][dx] != CellState.WALL:
+                    return choice
+            return Direction.NONE
 
-        current_x = self._checkpoint[0]
-        current_y = self._checkpoint[1]
-        best_checkpoint = (current_x, current_y)
-
-        for i, d in enumerate(directions):
-            if (
-                not reverse_allowed
-                and d == self.direction.opposite
-                and self.direction != Direction.NONE
-            ):
-                continue
-
-            next_x = int(current_x) + d.value[0]
-            next_y = int(current_y) + d.value[1]
-
-            if (
-                0 <= next_y < len(self._level.grid)
-                and 0 <= next_x < len(self._level.grid[0])
-                and self._level.grid[next_y][next_x] != CellState.WALL
-            ):
-                dist_sq = math.sqrt(
-                    (next_x - self._target_tile[0]) ** 2
-                    + (next_y - self._target_tile[1]) ** 2
-                )
-
-                if dist_sq < min_distance:
-                    min_distance = dist_sq
-                    best_direction = d
-                    best_checkpoint = (float(next_x), float(next_y))
-
-            # Prevent getting stuck in dead ends
-            if (
-                i == len(directions) - 1
-                and best_checkpoint == (current_x, current_y)
-            ):
-                best_direction = self.direction.opposite
-
-        self._checkpoint = best_checkpoint
-        return best_direction
+        return self.direction

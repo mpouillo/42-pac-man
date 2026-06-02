@@ -1,6 +1,6 @@
+from pathlib import Path
 from typing import Any, Dict, List
 
-from constants import LEVELS_DIR
 from mazegenerator import MazeGenerator
 from pydantic import BaseModel, field_validator
 from protocols import CellState, GhostType
@@ -52,8 +52,8 @@ class LevelData(BaseModel):
 
 
 class Level:
-    def __init__(self, level_id: int = 1) -> None:
-        self.id: int = level_id
+    def __init__(self, level_file: Path) -> None:
+        self._level_file = level_file
         self.data: LevelData = self._load_level_data()
         self.grid: List[List[CellState]] = self._load_grid()
         self.size = (len(self.grid), len(self.grid[0]))
@@ -86,13 +86,14 @@ class Level:
     def reset(self) -> None:
         self._load_level_data()
 
-    def go_next(self) -> None:
-        self.id += 1
-        self.reset()
-
     def _load_level_data(self) -> LevelData:
-        file_path = LEVELS_DIR / f"level_{self.id}.json"
-        return LevelData.model_validate_json(file_path.read_text())
+        try:
+            data = self._level_file.read_text()
+        except OSError as e:
+            raise OSError(
+                f"Error reading level data from {self._level_file}: {e}"
+            )
+        return LevelData.model_validate_json(data)
 
     def _load_grid(self) -> List[List[CellState]]:
         gen = MazeGenerator(

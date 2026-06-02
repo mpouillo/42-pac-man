@@ -1,4 +1,4 @@
-from typing import Protocol
+from typing import List, Protocol
 from dataclasses import dataclass
 from enum import Enum, auto
 
@@ -35,6 +35,22 @@ class Direction(Enum):
     def opposite(self) -> "Direction":
         x, y = self.value
         return Direction((-x, -y))
+
+    @classmethod
+    def best_from_points(
+        cls,
+        p1: tuple[float, float],
+        p2: tuple[float, float]
+    ) -> List["Direction"]:
+        dx = p2[0] - p1[0]
+        dy = p2[1] - p1[1]
+        cardinals = [cls.UP, cls.DOWN, cls.LEFT, cls.RIGHT]
+
+        return sorted(
+            cardinals,
+            key=lambda d: (dx * d.value[0]) + (dy * d.value[1]),
+            reverse=True
+        )
 
 
 class CellState(Enum):
@@ -114,7 +130,7 @@ class ModelProtocol(Protocol):
         """Returns the state and position of all 4 ghosts."""
         ...
 
-    def get_maze(self) -> list[list[CellState]]:
+    def get_grid(self) -> list[list[CellState]]:
         """Returns the current grid."""
         ...
 
@@ -135,7 +151,7 @@ class ModelProtocol(Protocol):
         """Registers the player's intended movement for the next frame."""
         ...
 
-    def get_top_scores(self) -> list[HighscoreEntry]:
+    def get_top_scores(self, amount: int) -> list[HighscoreEntry]:
         """Returns the top 10 scores to be displayed in the menu."""
         ...
 

@@ -1,10 +1,11 @@
 from pathlib import Path
 
-from pydantic import BaseModel
+from pydantic import BaseModel, FilePath
 
 
 class ConfigData(BaseModel):
-    highscore_filename: str
+    highscores: str
+    levels: list[FilePath]
     lives: int
     points_per_pacgum: int
     points_per_super_pacgum: int
@@ -14,15 +15,15 @@ class ConfigData(BaseModel):
 def load_config(file_path: str) -> ConfigData:
     path = Path(file_path)
     if not path.exists() or path.is_dir():
-        raise ValueError("File does not exist.")
+        raise OSError("File does not exist.")
 
     try:
         raw_data = path.read_text()
-    except Exception as e:
-        raise IOError(f"Error while reading config file: {e}")
+    except OSError as e:
+        raise OSError(f"Error while reading config file: {e}")
 
     try:
-        clean_data = "".join([
+        clean_data = "\n".join([
             line for line in raw_data.split('\n')
             if not line.strip().startswith('#')
         ])

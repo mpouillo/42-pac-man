@@ -32,19 +32,17 @@ class HighscoreManager:
 
     def get_top_scores(self, amount: int) -> List[HighscoreEntry]:
         """Fetch and return top score HighscoreEntry."""
-        scores = self._scores[:]
-        top_scores = []
-        for _ in range(amount):
-            top_score = max(scores, key=lambda entry: entry.score)
-            top_scores.append(top_score)
-            idx = scores.index(top_score)
-            scores.pop(idx)
-
-        return top_scores
+        sorted_scores = sorted(
+            self._scores, key=lambda entry: entry.score, reverse=True
+        )
+        return sorted_scores[:amount]
 
     def load_scores(self) -> None:
-        if not self._file_path.exists() or self._file_path.is_dir():
-            raise ValueError("File does not exist.")
+        if not self._file_path.exists():
+            self._scores = []
+            return
+        if self._file_path.is_dir():
+            raise ValueError("Highscore path points to a directory.")
 
         raw_data = self._file_path.read_bytes()
         adapter = TypeAdapter(list[HighscoreEntry])

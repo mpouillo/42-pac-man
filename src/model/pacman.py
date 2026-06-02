@@ -1,6 +1,6 @@
 import math
 
-from constants import PACMAN_SPEED
+from constants import PACMAN_SPEED, SPEED_FACTOR
 from protocols import CellState, Direction, PacmanData
 from src.model.level import Level
 
@@ -13,7 +13,7 @@ class Pacman:
         self.queued_direction: Direction = Direction.NONE
         self.alive: bool = True
 
-        self._speed: float = PACMAN_SPEED
+        self._speed: float = PACMAN_SPEED * SPEED_FACTOR
         self._timer: float = 0.0
         self._level: Level = level
 
@@ -26,25 +26,26 @@ class Pacman:
         )
 
     def update(self, delta_time: float) -> None:
-        self._calculate_movement(delta_time)
+        self._snap_to_cells(delta_time)
+        self._compute_direction()
+        self.x += self.direction.value[0] * self._speed * delta_time
+        self.y += self.direction.value[1] * self._speed * delta_time
 
-    def _calculate_movement(self, delta_time: float) -> None:
-        if self.direction == Direction.NONE:
-            return
+    def _snap_to_cells(self, delta_time: float) -> None:
+        """Snap to center of cells if boundary is crossed this frame."""
+        step_x = self.direction.value[0] * self._speed * delta_time
+        step_y = self.direction.value[1] * self._speed * delta_time
+        if step_x != 0 and math.floor(self.x) != math.floor(self.x + step_x):
+            self.x = round(self.x)
+        if step_y != 0 and math.floor(self.y) != math.floor(self.y + step_y):
+            self.y = round(self.y)
 
-        # Snap to center of cells
-        if (
-            math.dist([self.x, self.y], [round(self.x), round(self.y)])
-            < delta_time * self._speed / 2
-        ):
-            self.x, self.y = round(self.x), round(self.y)
-
+    def _compute_direction(self) -> None:
         # At center of cell
-        if self.x == int(self.x) and self.y == int(self.y):
-            cx = int(self.x)
-            cy = int(self.y)
+        if self.x == math.floor(self.x) and self.y == math.floor(self.y):
+            cx, cy = int(self.x), int(self.y)
 
-            # Check if new direction moves towards a wall
+            # Apply buffered direction if valid
             if self.queued_direction != Direction.NONE:
                 dirx = self.queued_direction.value[0]
                 diry = self.queued_direction.value[1]
@@ -52,17 +53,9 @@ class Pacman:
                     self.direction = self.queued_direction
                     self.queued_direction = Direction.NONE
 
-            nx = cx + self.direction.value[0]
-            ny = cy + self.direction.value[1]
-
             # Stop moving if facing a wall
-            if self._level.grid[ny][nx] == CellState.WALL:
+            dx = cx + self.direction.value[0]
+            dy = cy + self.direction.value[1]
+            if self._level.grid[dy][dx] == CellState.WALL:
                 self.direction = Direction.NONE
                 self.queued_direction = Direction.NONE
-
-        # Next position
-        nx = self.x + (self.direction.value[0] * self._speed * delta_time)
-        ny = self.y + (self.direction.value[1] * self._speed * delta_time)
-
-        self.x = nx
-        self.y = ny

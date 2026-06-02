@@ -13,4 +13,3 @@ PACMAN_SPEED: float = 2.0
 SPEED_BOOST_CHEAT: float = 2.0
 GHOST_FLASH_THRESHOLD: float = 3.0
 SPEED_FACTOR: float = 2.5
-

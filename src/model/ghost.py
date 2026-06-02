@@ -151,14 +151,6 @@ class Ghost:
             Direction.RIGHT
         ]
 
-        opposites = {
-            Direction.UP: Direction.DOWN,
-            Direction.DOWN: Direction.UP,
-            Direction.LEFT: Direction.RIGHT,
-            Direction.RIGHT: Direction.LEFT,
-            Direction.NONE: Direction.NONE
-        }
-
         best_direction = self.direction
         min_distance = float('inf')
 
@@ -169,7 +161,7 @@ class Ghost:
         for i, d in enumerate(directions):
             if (
                 not reverse_allowed
-                and d == opposites[self.direction]
+                and d == self.direction.opposite
                 and self.direction != Direction.NONE
             ):
                 continue
@@ -197,7 +189,7 @@ class Ghost:
                 i == len(directions) - 1
                 and best_checkpoint == (current_x, current_y)
             ):
-                best_direction = opposites[self.direction]
+                best_direction = self.direction.opposite
 
         self._checkpoint = best_checkpoint
         return best_direction

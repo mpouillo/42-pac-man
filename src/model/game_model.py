@@ -68,21 +68,12 @@ class GameModel(ModelProtocol):
         return self._level.pacgums == 0 or self._lives == 0
 
     def set_player_input(self, direction: Direction) -> None:
-        opposites = {
-            Direction.UP: Direction.DOWN,
-            Direction.DOWN: Direction.UP,
-            Direction.LEFT: Direction.RIGHT,
-            Direction.RIGHT: Direction.LEFT,
-            Direction.NONE: Direction.NONE
-        }
-
-        if (
-            opposites[self._pacman.direction] == direction
-            or self._pacman.direction == Direction.NONE
-        ):
+        # Instantly set direction if opposite of current
+        if self._pacman.direction.opposite == direction:
             self._pacman.direction = direction
             return
 
+        # Save direction in buffer
         self._pacman.queued_direction = direction
 
     def get_top_scores(self) -> list[HighscoreEntry]:
@@ -122,17 +113,7 @@ class GameModel(ModelProtocol):
 
         self._pacman_actions(delta_time)
         self._ghost_actions(delta_time)
-
-        for ghost in self._ghosts:
-            if self._did_collide(ghost):
-                if ghost.state.is_edible:
-                    self._score += self._config.points_per_ghost
-                    ghost.die()
-                elif ghost.state.is_lethal:
-                    if CheatType.INVINCIBILITY in self._cheats:
-                        return
-                    self._lose_round()
-                    return
+        self._check_collisions()
 
     def _lose_round(self) -> None:
         self._lives -= 1
@@ -171,6 +152,18 @@ class GameModel(ModelProtocol):
 
         for ghost in self._ghosts:
             ghost.update(delta_time, self.get_pacman(), red_ghost)
+
+    def _check_collisions(self) -> None:
+        for ghost in self._ghosts:
+            if self._did_collide(ghost):
+                if ghost.state.is_edible:
+                    self._score += self._config.points_per_ghost
+                    ghost.die()
+                elif ghost.state.is_lethal:
+                    if CheatType.INVINCIBILITY in self._cheats:
+                        continue
+                    self._lose_round()
+                    return
 
     def _did_collide(self, ghost: Ghost) -> bool:
         """

@@ -59,7 +59,7 @@ class DebugView(ViewProtocol):
         pr.close_window()
 
     def _draw_maze(self, model: ModelProtocol) -> None:
-        maze = model.get_maze()
+        maze = model.get_grid()
         if not maze:
             return
 

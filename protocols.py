@@ -2,6 +2,8 @@ from typing import Protocol
 from dataclasses import dataclass
 from enum import Enum, auto
 
+from pydantic import Field
+
 
 class GamePhase(Enum):
     MAIN_MENU = auto()
@@ -28,6 +30,11 @@ class Direction(Enum):
     DOWN = (0, 1)
     RIGHT = (1, 0)
     NONE = (0, 0)
+
+    @property
+    def opposite(self) -> "Direction":
+        x, y = self.value
+        return Direction((-x, -y))
 
 
 class CellState(Enum):
@@ -78,8 +85,8 @@ class PacmanData(EntityData):
 
 @dataclass
 class HighscoreEntry:
-    name: str
-    score: int
+    name: str = Field(..., min_length=1)
+    score: int = Field(..., gt=0)
 
 
 class ModelProtocol(Protocol):

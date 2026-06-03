@@ -25,3 +25,7 @@
 	: Updates to protocols.py
 	: Created config.py and config.json
 	: Created stubs for GameController and __main__
+
+2026-06-03
+	: Improvements to ghost AI
+	: Improvements to code structure

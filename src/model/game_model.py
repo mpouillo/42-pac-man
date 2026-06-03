@@ -144,19 +144,20 @@ class GameModel(ModelProtocol):
             self._phase = GamePhase.GAME_OVER
 
     def _pacman_actions(self, delta_time: float) -> None:
-        rpos = (round(self._pacman.x), round(self._pacman.y))
-        match self._level.grid[rpos[1]][rpos[0]]:
+        pos = (round(self._pacman.x), round(self._pacman.y))
+        match self._level.grid[pos[1]][pos[0]]:
             case CellState.PACGUM:
-                self._level.update_cell(*rpos, CellState.EMPTY)
+                self._level.update_cell(*pos, CellState.EMPTY)
                 self._score += self._config.points_per_pacgum
             case CellState.SUPER_PACGUM:
-                self._level.update_cell(*rpos, CellState.EMPTY)
+                self._level.update_cell(*pos, CellState.EMPTY)
                 self._score += self._config.points_per_super_pacgum
                 for ghost in self._ghosts:
-                    ghost.set_state(
-                        GhostState.FRIGHTENED,
-                        self._level.data.difficulty.fear_duration
-                    )
+                    if not ghost.state == GhostState.EATEN:
+                        ghost.frighten(
+                            self._level.data.difficulty.fear_duration,
+                            self.get_pacman()
+                        )
 
         if CheatType.SPEED_BOOST in self._cheats:
             delta_time *= SPEED_BOOST_CHEAT
@@ -170,8 +171,7 @@ class GameModel(ModelProtocol):
 
         red_ghost = next(
             (ghost.data for ghost in self._ghosts
-             if ghost.type == GhostType.RED),
-            Ghost(GhostType.RED, self._level).data
+             if ghost.type == GhostType.RED)
         )
 
         for ghost in self._ghosts:

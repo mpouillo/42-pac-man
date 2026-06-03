@@ -96,7 +96,7 @@ class DebugView(ViewProtocol):
             GhostType.ORANGE: pr.ORANGE
         }
 
-        ghosts = model.get_ghosts()
+        ghosts = model._ghosts
         if ghosts:
             for ghost in ghosts:
                 gx = int(self.offset_x + ghost.x * self.cell_size + self.cell_size // 2)
@@ -111,6 +111,28 @@ class DebugView(ViewProtocol):
                     self.cell_size - 4,
                     color
                 )
+
+                # Draw target
+                tx = int(self.offset_x + ghost._target[0] * self.cell_size + self.cell_size // 2)
+                ty = int(self.offset_y + ghost._target[1] * self.cell_size + self.cell_size // 2)
+                pr.draw_rectangle(
+                    tx - self.cell_size // 2 + 2,
+                    ty - self.cell_size // 2 + 2,
+                    self.cell_size - 4,
+                    self.cell_size - 4,
+                    pr.color_alpha(color, 0.5)
+                )
+
+                for step in ghost._path:
+                    px = int(self.offset_x + step[0] * self.cell_size + self.cell_size // 2)
+                    py = int(self.offset_y + step[1] * self.cell_size + self.cell_size // 2)
+                    pr.draw_rectangle(
+                        px - self.cell_size // 2 + 2,
+                        py - self.cell_size // 2 + 2,
+                        self.cell_size - 4,
+                        self.cell_size - 4,
+                        pr.color_alpha(pr.GREEN, 0.5)
+                    )
 
     def _draw_hud(self, model: ModelProtocol) -> None:
         pr.draw_text(f"Score: {model.get_score()}", 20, 10, 20, pr.WHITE)

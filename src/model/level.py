@@ -56,7 +56,8 @@ class Level:
         self._level_file = level_file
         self.data: LevelData = self._load_level_data()
         self.grid: List[List[CellState]] = self._load_grid()
-        self.size = (len(self.grid), len(self.grid[0]))
+        self.height = len(self.grid)
+        self.width = len(self.grid[0]) if self.height else 0
         self.pacgums = sum(
             1 for row in self.grid for cell in row
             if cell in (CellState.PACGUM, CellState.SUPER_PACGUM)

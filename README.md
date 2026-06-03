@@ -16,4 +16,5 @@ TODO
 
 ## Resources
 
-TODO
+- [A* Search: A Comprehensive Guide (Medium)](https://medium.com/@tahsinsoyakk/a-search-a-comprehensive-guide-8275ebdf8fae)
+- [TAC380 - Lab 5: Pac-Man](https://itp380.org/Lab05.html)

@@ -1,9 +1,12 @@
 from pathlib import Path
 from typing import List
 
-from pydantic import TypeAdapter
+from pydantic import BaseModel, Field, TypeAdapter
 
-from protocols import HighscoreEntry
+
+class HighscoreEntry(BaseModel):
+    name: str = Field(..., min_length=1)
+    score: int = Field(..., gt=0)
 
 
 class HighscoreManager:

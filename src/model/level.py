@@ -3,7 +3,7 @@ from typing import Any, Dict, List
 
 from mazegenerator import MazeGenerator
 from pydantic import BaseModel, field_validator
-from protocols import CellState, GhostType
+from src.types.enums import CellState, GhostState, GhostType
 
 
 class Position(BaseModel):
@@ -36,7 +36,7 @@ class LevelData(BaseModel):
         if isinstance(val, dict):
             return {
                 GhostType[k.upper()] if (
-                    isinstance(k, str) and k.upper() in GhostType.__members__
+                    isinstance(k, str) and k.upper() in GhostState.__members__
                     ) else k: v
                 for k, v in val.items()
             }

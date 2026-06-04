@@ -3,24 +3,22 @@ from typing import List
 
 from pydantic import ValidationError
 
-from constants import SPEED_BOOST_CHEAT
-from protocols import (
+from src.constants import SPEED_BOOST_CHEAT
+from src.config import ConfigData
+from src.highscore import HighscoreEntry, HighscoreManager
+from src.model.ghost import Ghost
+from src.model.level import Level
+from src.model.pacman import Pacman
+from src.types.dataclasses import GhostData, PacmanData
+from src.types.enums import (
     CellState,
     CheatType,
     Direction,
     GamePhase,
-    GhostData,
     GhostState,
-    GhostType,
-    HighscoreEntry,
-    ModelProtocol,
-    PacmanData
+    GhostType
 )
-from src.config import ConfigData
-from src.highscore import HighscoreManager
-from src.model.ghost import Ghost
-from src.model.level import Level
-from src.model.pacman import Pacman
+from src.types.protocols import ModelProtocol
 
 
 class GameModel(ModelProtocol):

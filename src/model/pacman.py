@@ -1,8 +1,9 @@
 import math
 
-from constants import PACMAN_SPEED, SPEED_FACTOR
-from protocols import CellState, Direction, PacmanData
+from src.constants import PACMAN_SPEED, SPEED_FACTOR
 from src.model.level import Level
+from src.types.dataclasses import PacmanData
+from src.types.enums import CellState, Direction
 
 
 class Pacman:

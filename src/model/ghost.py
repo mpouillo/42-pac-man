@@ -1,16 +1,10 @@
 import heapq
 import math
 
-from constants import GHOST_FLASH_THRESHOLD, SPEED_FACTOR
-from protocols import (
-    CellState,
-    Direction,
-    GhostData,
-    GhostState,
-    GhostType,
-    PacmanData
-)
+from src.constants import GHOST_FLASH_THRESHOLD, SPEED_FACTOR
 from src.model.level import Level
+from src.types.dataclasses import GhostData, PacmanData
+from src.types.enums import CellState, Direction, GhostState, GhostType
 
 Coordinates = tuple[int, int]   # (x, y)
 
@@ -33,7 +27,7 @@ class Ghost:
             level.data.difficulty.ghost_speed * SPEED_FACTOR
         )
         self._speed: float = self._base_speed
-        self._timer: float = 0.0
+        self._timer: float = 5.0
         self._target: Coordinates = (0, 0)
         self._path: list[Coordinates] = []
         self._scatter_target: Coordinates = self._init_scatter_target()
@@ -50,32 +44,42 @@ class Ghost:
         )
 
     def chase(self) -> None:
+        print(self.type, "is chasing")
         self.state = GhostState.CHASE
         self._speed = self._base_speed * 1.5
         self._timer = 20.0
         self._path = []
 
     def scatter(self) -> None:
+        print(self.type, "is scattering")
         self.state = GhostState.SCATTER
         self._speed = self._base_speed * 1.5
         self._timer = 5.0
         self._path = []
 
     def frighten(self, duration: float, pacman: PacmanData) -> None:
+        print(self.type, "is frightened")
         self.state = GhostState.FRIGHTENED
         self._speed = self._base_speed
         self._timer = duration
         self._path = []
 
+        # Turn around immediately if going in Pacman's direction
         dx = (pacman.x - self.x) * self.direction.value[0]
         dy = (pacman.y - self.y) * self.direction.value[1]
         if (dx + dy) > 0:
             self.direction = self.direction.opposite
 
     def die(self) -> None:
+        print(self.type, "is eaten")
         self.state = GhostState.EATEN
         self._speed = self._base_speed * 2
+        self._timer = 0.0
         self._path = []
+
+        # Turn around immediately if going opposite to spawn
+        if self._pick_direction(self.spawn, True) == self.direction.opposite:
+            self.direction = self.direction.opposite
 
     def update(
         self,

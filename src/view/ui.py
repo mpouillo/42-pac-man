@@ -1,4 +1,4 @@
-"""Raylib based 2D user interface for Pac-Man."""
+"""Raylib based 3D user interface for Pac-Man."""
 
 from typing import Any
 
@@ -22,6 +22,7 @@ SELECTED_COLOR = ray.Color(255, 230, 0, 255)
 OVERLAY_COLOR = ray.Color(0, 0, 0, 190)
 FRIGHTENED_COLOR = ray.Color(40, 80, 255, 255)
 FLASHING_COLOR = ray.Color(255, 255, 255, 255)
+WALL_EDGE_COLOR = ray.Color(60, 100, 255, 255)
 
 
 class GameView:
@@ -34,7 +35,6 @@ class GameView:
         self._pause_menu_index = 0
         self._wall_breaker_enabled = False
 
-        self._use_3d = True
         self._cell_size_3d = 1.0
         self._wall_height_3d = 0.7
 
@@ -224,9 +224,178 @@ class GameView:
 
     def _draw_game(self, model: ModelProtocol) -> None:
         """Draw gameplay screen."""
+        grid = model.get_grid()
+        pacman = model.get_pacman()
+        ghosts = model.get_ghosts()
+
+        ray.begin_mode_3d(self._camera)
+        self._draw_3d_floor(grid)
+        self._draw_3d_grid(grid)
+        self._draw_3d_pacman(pacman, grid)
+
+        for ghost in ghosts:
+            self._draw_3d_ghost(ghost, grid)
+
+        ray.end_mode_3d()
+
         self._draw_hud(model)
-        self._draw_grid(model)
-        self._draw_entities(model)
+
+    def _grid_to_world(
+        self,
+        grid_x: float,
+        grid_y: float,
+        grid: list[list[CellState]],
+        height: float,
+    ) -> Any:
+        """Convert 2D grid coordinates to 3D world coordinates."""
+        rows = len(grid)
+        cols = len(grid[0])
+
+        centered_x = grid_x - cols / 2.0 + 0.5
+        centered_z = grid_y - rows / 2.0 + 0.5
+
+        world_x = centered_x * self._cell_size_3d
+        world_z = centered_z * self._cell_size_3d
+
+        return ray.Vector3(world_x, height, world_z)
+
+    def _draw_3d_floor(self, grid: list[list[CellState]]) -> None:
+        """Draw the 3D floor under the maze."""
+        if not grid or not grid[0]:
+            return
+
+        rows = len(grid)
+        cols = len(grid[0])
+
+        width = cols * self._cell_size_3d
+        depth = rows * self._cell_size_3d
+
+        ray.draw_plane(
+            ray.Vector3(0.0, 0.0, 0.0),
+            ray.Vector2(width, depth),
+            BOARD_BACKGROUND,
+        )
+
+    def _draw_3d_wall(
+        self,
+        grid_x: int,
+        grid_y: int,
+        grid: list[list[CellState]],
+    ) -> None:
+        """Draw one 3D wall block."""
+        position = self._grid_to_world(
+            float(grid_x),
+            float(grid_y),
+            grid,
+            self._wall_height_3d / 2.0,
+        )
+
+        ray.draw_cube(
+            position,
+            self._cell_size_3d,
+            self._wall_height_3d,
+            self._cell_size_3d,
+            WALL_COLOR,
+        )
+
+        ray.draw_cube_wires(
+            position,
+            self._cell_size_3d,
+            self._wall_height_3d,
+            self._cell_size_3d,
+            WALL_EDGE_COLOR,
+        )
+
+    def _draw_3d_pacgum(
+        self,
+        grid_x: int,
+        grid_y: int,
+        grid: list[list[CellState]],
+        is_super: bool = False,
+    ) -> None:
+        """Draw one 3D pacgum or super pacgum."""
+        radius = 0.18 if is_super else 0.07
+        color = SUPER_PACGUM_COLOR if is_super else PACGUM_COLOR
+        position = self._grid_to_world(
+            float(grid_x),
+            float(grid_y),
+            grid,
+            radius,
+        )
+        ray.draw_sphere(position, radius, color)
+
+    def _draw_3d_pacman(
+        self,
+        pacman: Any,
+        grid: list[list[CellState]],
+    ) -> None:
+        """Draw Pac-Man in 3D."""
+        radius = 0.35
+
+        position = self._grid_to_world(
+            pacman.x,
+            pacman.y,
+            grid,
+            radius,
+        )
+
+        ray.draw_sphere(
+            position,
+            radius,
+            PACMAN_COLOR,
+        )
+
+    def _draw_3d_ghost(
+        self,
+        ghost: GhostData,
+        grid: list[list[CellState]],
+    ) -> None:
+        """Draw one ghost in 3D."""
+        radius = 0.35
+
+        position = self._grid_to_world(
+            ghost.x,
+            ghost.y,
+            grid,
+            radius,
+        )
+
+        ray.draw_sphere(
+            position,
+            radius,
+            self._get_ghost_color(ghost),
+        )
+
+    def _get_ghost_color(self, ghost: GhostData) -> Any:
+        """Return ghost color according to type and state."""
+        if ghost.state.name == "FRIGHTENED":
+            return FRIGHTENED_COLOR
+
+        if ghost.state.name == "FLASHING":
+            return FLASHING_COLOR
+
+        colors = {
+            GhostType.PINK: ray.Color(255, 120, 200, 255),
+            GhostType.RED: ray.Color(255, 40, 40, 255),
+            GhostType.ORANGE: ray.Color(255, 150, 40, 255),
+            GhostType.BLUE: ray.Color(40, 220, 255, 255),
+        }
+
+        return colors.get(ghost.type, TEXT_COLOR)
+
+    def _draw_3d_grid(
+            self,
+            grid: list[list[CellState]],
+    ) -> None:
+        """Draw walls and pacgums in the 3D maze."""
+        for y, row in enumerate(grid):
+            for x, cell in enumerate(row):
+                if cell == CellState.WALL:
+                    self._draw_3d_wall(x, y, grid)
+                elif cell == CellState.PACGUM:
+                    self._draw_3d_pacgum(x, y, grid)
+                elif cell == CellState.SUPER_PACGUM:
+                    self._draw_3d_pacgum(x, y, grid, is_super=True)
 
     def _draw_hud(self, model: ModelProtocol) -> None:
         """Draw score, lives, level, and timer."""
@@ -246,186 +415,6 @@ class GameView:
             26,
             TEXT_COLOR,
         )
-
-    def _draw_grid(self, model: ModelProtocol) -> None:
-        """Draw maze cells."""
-        grid = model.get_grid()
-        layout = self._get_grid_layout(grid)
-
-        if layout is None:
-            return
-
-        offset_x, offset_y, cell_size = layout
-
-        board_width = len(grid[0]) * cell_size
-        board_height = len(grid) * cell_size
-
-        ray.draw_rectangle(
-            offset_x,
-            offset_y,
-            board_width,
-            board_height,
-            BOARD_BACKGROUND,
-        )
-
-        for y, row in enumerate(grid):
-            for x, cell in enumerate(row):
-                self._draw_cell(cell, x, y, offset_x, offset_y, cell_size)
-
-    def _draw_cell(
-        self,
-        cell: CellState,
-        x: int,
-        y: int,
-        offset_x: int,
-        offset_y: int,
-        cell_size: int,
-    ) -> None:
-        """Draw one maze cell."""
-        screen_x = offset_x + x * cell_size
-        screen_y = offset_y + y * cell_size
-
-        if cell == CellState.WALL:
-            ray.draw_rectangle(
-                screen_x,
-                screen_y,
-                cell_size,
-                cell_size,
-                WALL_COLOR,
-            )
-
-        elif cell == CellState.PACGUM:
-            radius = max(2, cell_size // 8)
-            self._draw_cell_circle(
-                screen_x,
-                screen_y,
-                cell_size,
-                radius,
-                PACGUM_COLOR,
-            )
-
-        elif cell == CellState.SUPER_PACGUM:
-            radius = max(4, cell_size // 4)
-            self._draw_cell_circle(
-                screen_x,
-                screen_y,
-                cell_size,
-                radius,
-                SUPER_PACGUM_COLOR,
-            )
-
-    def _draw_entities(self, model: ModelProtocol) -> None:
-        """Draw Pac-Man and ghosts."""
-        grid = model.get_grid()
-        layout = self._get_grid_layout(grid)
-
-        if layout is None:
-            return
-
-        offset_x, offset_y, cell_size = layout
-
-        pacman = model.get_pacman()
-        self._draw_entity_circle(
-            pacman.x,
-            pacman.y,
-            offset_x,
-            offset_y,
-            cell_size,
-            PACMAN_COLOR,
-        )
-
-        for ghost in model.get_ghosts():
-            self._draw_ghost(ghost, offset_x, offset_y, cell_size)
-
-    def _draw_ghost(
-        self,
-        ghost: GhostData,
-        offset_x: int,
-        offset_y: int,
-        cell_size: int,
-    ) -> None:
-        """Draw one ghost."""
-        self._draw_entity_circle(
-            ghost.x,
-            ghost.y,
-            offset_x,
-            offset_y,
-            cell_size,
-            self._get_ghost_color(ghost),
-        )
-
-    def _draw_entity_circle(
-        self,
-        grid_x: float,
-        grid_y: float,
-        offset_x: int,
-        offset_y: int,
-        cell_size: int,
-        color: Any,
-    ) -> None:
-        """Draw an entity centered on grid coordinates."""
-        screen_x = int(offset_x + grid_x * cell_size + cell_size / 2)
-        screen_y = int(offset_y + grid_y * cell_size + cell_size / 2)
-        radius = max(4, cell_size // 2 - 2)
-
-        ray.draw_circle(screen_x, screen_y, radius, color)
-
-    def _draw_cell_circle(
-        self,
-        screen_x: int,
-        screen_y: int,
-        cell_size: int,
-        radius: int,
-        color: Any,
-    ) -> None:
-        """Draw a circle centered inside a cell."""
-        center_x = screen_x + cell_size // 2
-        center_y = screen_y + cell_size // 2
-        ray.draw_circle(center_x, center_y, radius, color)
-
-    def _get_grid_layout(
-        self,
-        grid: list[list[CellState]],
-    ) -> tuple[int, int, int] | None:
-        """Return offset x, offset y, and cell size."""
-        if not grid or not grid[0]:
-            return None
-
-        rows = len(grid)
-        cols = len(grid[0])
-
-        hud_height = 70
-        padding = 24
-        max_width = self._window_width - padding * 2
-        max_height = self._window_height - hud_height - padding * 2
-
-        cell_size = min(max_width // cols, max_height // rows)
-        cell_size = max(4, cell_size)
-
-        board_width = cols * cell_size
-        board_height = rows * cell_size
-
-        offset_x = (self._window_width - board_width) // 2
-        offset_y = hud_height + (max_height - board_height) // 2
-
-        return offset_x, offset_y, cell_size
-
-    def _get_ghost_color(self, ghost: GhostData) -> Any:
-        """Return ghost color according to type and state."""
-        if ghost.state.name == "FRIGHTENED":
-            return FRIGHTENED_COLOR
-
-        if ghost.state.name == "FLASHING":
-            return FLASHING_COLOR
-
-        colors = {
-            GhostType.PINK: ray.Color(255, 120, 200, 255),
-            GhostType.RED: ray.Color(255, 40, 40, 255),
-            GhostType.ORANGE: ray.Color(255, 150, 40, 255),
-            GhostType.BLUE: ray.Color(40, 220, 255, 255),
-        }
-
-        return colors.get(ghost.type, TEXT_COLOR)
 
     def _draw_menu(
         self,

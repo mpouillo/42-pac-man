@@ -36,7 +36,9 @@ class LevelData(BaseModel):
         if isinstance(val, dict):
             return {
                 GhostType[k.upper()] if (
-                    isinstance(k, str) and k.upper() in GhostState.__members__
+                    # isinstance(k, str) and
+                    # k.upper() in GhostState.__members__
+                    isinstance(k, str) and k.upper() in GhostType.__members__
                     ) else k: v
                 for k, v in val.items()
             }

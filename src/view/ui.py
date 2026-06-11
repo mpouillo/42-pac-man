@@ -22,21 +22,20 @@ SELECTED_COLOR = ray.Color(255, 230, 0, 255)
 OVERLAY_COLOR = ray.Color(0, 0, 0, 190)
 FRIGHTENED_COLOR = ray.Color(40, 80, 255, 255)
 FLASHING_COLOR = ray.Color(255, 255, 255, 255)
-WALL_EDGE_COLOR = ray.Color(60, 100, 255, 255)
 
 
 class GameView:
     """Draw the current game state."""
 
     def __init__(self) -> None:
-        self._window_width = 1600
-        self._window_height = 900
+        self._window_width = 0
+        self._window_height = 0
         self._main_menu_index = 0
         self._pause_menu_index = 0
         self._wall_breaker_enabled = False
 
         self._cell_size_3d = 1.0
-        self._wall_height_3d = 0.7
+        self._wall_height_3d = 0.5
 
         self._camera: Any = ray.Camera3D(
             ray.Vector3(0.0, 18.0, 18.0),
@@ -298,14 +297,6 @@ class GameView:
             WALL_COLOR,
         )
 
-        ray.draw_cube_wires(
-            position,
-            self._cell_size_3d,
-            self._wall_height_3d,
-            self._cell_size_3d,
-            WALL_EDGE_COLOR,
-        )
-
     def _draw_3d_pacgum(
         self,
         grid_x: int,
@@ -314,14 +305,20 @@ class GameView:
         is_super: bool = False,
     ) -> None:
         """Draw one 3D pacgum or super pacgum."""
-        radius = 0.18 if is_super else 0.07
-        color = SUPER_PACGUM_COLOR if is_super else PACGUM_COLOR
+        if is_super:
+            radius = 0.18
+            color = SUPER_PACGUM_COLOR
+        else:
+            radius = 0.07
+            color = PACGUM_COLOR
+
         position = self._grid_to_world(
             float(grid_x),
             float(grid_y),
             grid,
             radius,
         )
+
         ray.draw_sphere(position, radius, color)
 
     def _draw_3d_pacman(

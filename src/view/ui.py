@@ -28,11 +28,23 @@ class GameView:
     """Draw the current game state."""
 
     def __init__(self) -> None:
-        self._window_width = 1280
-        self._window_height = 720
+        self._window_width = 1600
+        self._window_height = 900
         self._main_menu_index = 0
         self._pause_menu_index = 0
         self._wall_breaker_enabled = False
+
+        self._use_3d = True
+        self._cell_size_3d = 1.0
+        self._wall_height_3d = 0.7
+
+        self._camera: Any = ray.Camera3D(
+            ray.Vector3(0.0, 18.0, 18.0),
+            ray.Vector3(0.0, 0.0, 0.0),
+            ray.Vector3(0.0, 1.0, 0.0),
+            45.0,
+            ray.CameraProjection.CAMERA_PERSPECTIVE,
+        )
 
     def initialize(self, window_width: int, window_height: int) -> None:
         """Initialize the game window."""

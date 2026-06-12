@@ -234,7 +234,7 @@ class GameController:
         For now, ENTER submits a default name and returns to main menu.
         """
         if input_state.confirm:
-            self._model.submit_score("PLAYER")
+            self._model.submit_score(self._current_player_name)
             self._model.set_game_phase(GamePhase.MAIN_MENU)
             self._main_menu.reset()
 

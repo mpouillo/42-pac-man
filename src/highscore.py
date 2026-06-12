@@ -13,6 +13,7 @@ class HighscoreManager:
     def __init__(self, file_path: str) -> None:
         self._file_path: Path = Path(file_path)
         self._scores: List[HighscoreEntry] = []
+        self.load_scores()
 
     def __str__(self) -> str:
         return str(self._scores)
@@ -20,6 +21,7 @@ class HighscoreManager:
     def add_entry(self, entry: HighscoreEntry) -> None:
         """Add an entry to highscores."""
         self._scores.append(entry)
+        self._scores = self.get_top_scores(10)
 
     def remove_entry(self, entry: HighscoreEntry) -> bool:
         """
@@ -49,8 +51,10 @@ class HighscoreManager:
 
         raw_data = self._file_path.read_bytes()
         adapter = TypeAdapter(list[HighscoreEntry])
-        for entry in adapter.validate_json(raw_data):
-            self.add_entry(entry)
+        self._scores = list(adapter.validate_json(raw_data))
+        self._scores = self.get_top_scores(10)
+        # for entry in adapter.validate_json(raw_data):
+        #    self.add_entry(entry)
 
     def save_scores(self) -> None:
         self._file_path.parent.mkdir(parents=True, exist_ok=True)

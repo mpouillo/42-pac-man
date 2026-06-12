@@ -22,12 +22,14 @@ TARGET_FPS = 60
 class GameController:
     """Main controller for the Pac-Man application."""
     def __init__(self, config: ConfigData) -> None:
+        self._config = config
         self._model = GameModel(config)
         self._view = GameView()
         self._running = True
         self._main_menu = MenuCursor(size=4)
         self._pause_menu = MenuCursor(size=3)
         self._wall_breaker_enabled = False
+        self._score_submitted = False
 
     def run(self) -> None:
         """Run the main game loop."""
@@ -91,7 +93,7 @@ class GameController:
         selected = self._main_menu.current()
 
         if selected == 0:
-            self._model.set_game_phase(GamePhase.PLAYING)
+            self._start_new_game()
 
         elif selected == 1:
             self._model.set_game_phase(GamePhase.HIGHSCORES_MENU)
@@ -101,6 +103,15 @@ class GameController:
 
         elif selected == 3:
             self._running = False
+
+    def _start_new_game(self) -> None:
+        """Create a fresh model and start a new game."""
+        self._model = GameModel(self._config)
+        self._model.set_game_phase(GamePhase.PLAYING)
+
+        self._pause_menu.reset()
+        self._wall_breaker_enabled = False
+        self._score_submitted = False
 
     def _update_playing(
         self,

@@ -21,7 +21,6 @@ class HighscoreManager:
     def add_entry(self, entry: HighscoreEntry) -> None:
         """Add an entry to highscores."""
         self._scores.append(entry)
-        self._scores = self.get_top_scores(10)
 
     def remove_entry(self, entry: HighscoreEntry) -> bool:
         """
@@ -52,7 +51,7 @@ class HighscoreManager:
         raw_data = self._file_path.read_bytes()
         adapter = TypeAdapter(list[HighscoreEntry])
         self._scores = list(adapter.validate_json(raw_data))
-        self._scores = self.get_top_scores(10)
+        # self._scores = self.get_top_scores(10)
         # for entry in adapter.validate_json(raw_data):
         #    self.add_entry(entry)
 

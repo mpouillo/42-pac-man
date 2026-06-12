@@ -29,7 +29,6 @@ class GameController:
         self._main_menu = MenuCursor(size=4)
         self._pause_menu = MenuCursor(size=3)
         self._wall_breaker_enabled = False
-        self._score_submitted = False
         self._name_popup_open = False
         self._pending_player_name = ""
         self._current_player_name = "PLAYER"
@@ -124,7 +123,6 @@ class GameController:
 
         self._pause_menu.reset()
         self._wall_breaker_enabled = False
-        self._score_submitted = False
 
     def _read_pending_player_name_input(self) -> None:
         """Read pseudo input while the start-game popup is open."""

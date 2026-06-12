@@ -6,5 +6,13 @@
     {
         "name": "PLAYER",
         "score": 1230
+    },
+    {
+        "name": "hello",
+        "score": 2500
+    },
+    {
+        "name": "bonjour",
+        "score": 3330
     }
 ]

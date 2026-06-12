@@ -30,6 +30,10 @@ class GameController:
         self._pause_menu = MenuCursor(size=3)
         self._wall_breaker_enabled = False
         self._score_submitted = False
+        self._name_popup_open = False
+        self._pending_player_name = ""
+        self._current_player_name = "PLAYER"
+        self._name_error = ""
 
     def run(self) -> None:
         """Run the main game loop."""
@@ -76,11 +80,18 @@ class GameController:
             main_menu_index=self._main_menu.current(),
             pause_menu_index=self._pause_menu.current(),
             wall_breaker_enabled=self._wall_breaker_enabled,
+            name_popup_open=self._name_popup_open,
+            pending_player_name=self._pending_player_name,
+            name_error=self._name_error,
         )
         self._view.render(self._model)
 
     def _update_main_menu(self, input_state: InputState) -> None:
         """Handle main menu input."""
+        if self._name_popup_open:
+            self._update_name_popup(input_state)
+            return
+
         self._main_menu.update(input_state)
 
         if input_state.escape:
@@ -93,7 +104,9 @@ class GameController:
         selected = self._main_menu.current()
 
         if selected == 0:
-            self._start_new_game()
+            self._name_popup_open = True
+            self._pending_player_name = ""
+            self._name_error = ""
 
         elif selected == 1:
             self._model.set_game_phase(GamePhase.HIGHSCORES_MENU)
@@ -112,6 +125,51 @@ class GameController:
         self._pause_menu.reset()
         self._wall_breaker_enabled = False
         self._score_submitted = False
+
+    def _read_pending_player_name_input(self) -> None:
+        """Read pseudo input while the start-game popup is open."""
+        char_code = ray.get_char_pressed()
+
+        while char_code > 0:
+            char = chr(char_code)
+
+            if len(self._pending_player_name) < 10:
+                if char.isalnum() or char == " ":
+                    self._pending_player_name += char
+                    self._name_error = ""
+                else:
+                    self._name_error = "Only letters, numbers and spaces"
+
+            char_code = ray.get_char_pressed()
+
+        if ray.is_key_pressed(ray.KeyboardKey.KEY_BACKSPACE):
+            self._pending_player_name = self._pending_player_name[:-1]
+            self._name_error = ""
+
+    def _update_name_popup(self, input_state: InputState) -> None:
+        """Handle the pseudo popup before starting a game."""
+        self._read_pending_player_name_input()
+
+        if input_state.escape:
+            self._name_popup_open = False
+            self._pending_player_name = ""
+            self._name_error = ""
+            return
+
+        if not input_state.confirm:
+            return
+
+        player_name = self._pending_player_name.strip()
+
+        if not player_name:
+            self._name_error = "Name cannot be empty"
+            return
+
+        self._current_player_name = player_name
+        self._name_popup_open = False
+        self._pending_player_name = ""
+        self._name_error = ""
+        self._start_new_game()
 
     def _update_playing(
         self,

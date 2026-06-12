@@ -34,6 +34,10 @@ class GameView:
         self._pause_menu_index = 0
         self._wall_breaker_enabled = False
 
+        self._name_popup_open = False
+        self._pending_player_name = ""
+        self._name_error = ""
+
         self._cell_size_3d = 1.0
         self._wall_height_3d = 0.5
 
@@ -60,11 +64,17 @@ class GameView:
         main_menu_index: int,
         pause_menu_index: int,
         wall_breaker_enabled: bool = False,
+        name_popup_open: bool = False,
+        pending_player_name: str = "",
+        name_error: str = "",
     ) -> None:
         """Receive UI-only state from the controller."""
         self._main_menu_index = main_menu_index
         self._pause_menu_index = pause_menu_index
         self._wall_breaker_enabled = wall_breaker_enabled
+        self._name_popup_open = name_popup_open
+        self._pending_player_name = pending_player_name
+        self._name_error = name_error
 
     def render(self, model: ModelProtocol) -> None:
         """Render one frame."""
@@ -75,6 +85,9 @@ class GameView:
 
         if phase == GamePhase.MAIN_MENU:
             self._draw_main_menu()
+
+            if self._name_popup_open:
+                self._draw_name_popup()
 
         elif phase == GamePhase.HIGHSCORES_MENU:
             self._draw_highscores(model)
@@ -134,6 +147,91 @@ class GameView:
             options=options,
             selected_index=self._pause_menu_index,
             footer="Space resumes the game",
+        )
+
+    def _draw_name_popup(self) -> None:
+        """Draw the pseudo input popup before starting a game."""
+        ray.draw_rectangle(
+            0,
+            0,
+            self._window_width,
+            self._window_height,
+            OVERLAY_COLOR,
+        )
+
+        popup_width = 460
+        popup_height = 240
+        popup_x = (self._window_width - popup_width) // 2
+        popup_y = (self._window_height - popup_height) // 2
+
+        ray.draw_rectangle(
+            popup_x,
+            popup_y,
+            popup_width,
+            popup_height,
+            BACKGROUND,
+        )
+        ray.draw_rectangle_lines(
+            popup_x,
+            popup_y,
+            popup_width,
+            popup_height,
+            SELECTED_COLOR,
+        )
+
+        self._draw_centered_text(
+            "Enter your pseudo",
+            popup_y + 30,
+            28,
+            SELECTED_COLOR,
+        )
+
+        input_width = 320
+        input_height = 44
+        input_x = (self._window_width - input_width) // 2
+        input_y = popup_y + 90
+
+        ray.draw_rectangle(
+            input_x,
+            input_y,
+            input_width,
+            input_height,
+            BOARD_BACKGROUND,
+        )
+        ray.draw_rectangle_lines(
+            input_x,
+            input_y,
+            input_width,
+            input_height,
+            TEXT_COLOR,
+        )
+
+        displayed_name = self._pending_player_name
+        if not displayed_name:
+            displayed_name = "_"
+
+        name_width = ray.measure_text(displayed_name, 24)
+        ray.draw_text(
+            displayed_name,
+            input_x + (input_width - name_width) // 2,
+            input_y + 10,
+            24,
+            TEXT_COLOR,
+        )
+
+        if self._name_error:
+            self._draw_centered_text(
+                self._name_error,
+                popup_y + 145,
+                18,
+                ray.Color(255, 80, 80, 255),
+            )
+
+        self._draw_centered_text(
+            "Enter: start   Escape: cancel",
+            popup_y + 185,
+            20,
+            MUTED_TEXT_COLOR,
         )
 
     def _draw_highscores(self, model: ModelProtocol) -> None:

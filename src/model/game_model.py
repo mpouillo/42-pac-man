@@ -128,13 +128,15 @@ class GameModel(ModelProtocol):
 
     def _win_round(self) -> None:
         # If at last level
-        if len(self._config.levels) - 1 >= self._level_id:
+        # if len(self._config.levels) - 1 >= self._level_id:
+        if self._level_id >= len(self._config.levels) - 1:
             self._phase = GamePhase.WIN
             return
 
         self._level_id += 1
         self._level = Level(self._config.levels[self._level_id])
-
+        self._reset()
+        
     def _lose_round(self) -> None:
         self._lives -= 1
         self._reset()

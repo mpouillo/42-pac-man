@@ -479,8 +479,8 @@ class GameView:
         return colors.get(ghost.type, TEXT_COLOR)
 
     def _draw_3d_grid(
-            self,
-            grid: list[list[CellState]],
+        self,
+        grid: list[list[CellState]],
     ) -> None:
         """Draw walls and pacgums in the 3D maze."""
         for y, row in enumerate(grid):

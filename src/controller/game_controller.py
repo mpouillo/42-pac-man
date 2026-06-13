@@ -125,7 +125,7 @@ class GameController:
         self._wall_breaker_enabled = False
 
     def _read_pending_player_name_input(self) -> None:
-        """Read pseudo input while the start-game popup is open."""
+        """Read username input while the start-game popup is open."""
         char_code = ray.get_char_pressed()
 
         while char_code > 0:
@@ -145,7 +145,7 @@ class GameController:
             self._name_error = ""
 
     def _update_name_popup(self, input_state: InputState) -> None:
-        """Handle the pseudo popup before starting a game."""
+        """Handle the username popup before starting a game."""
         self._read_pending_player_name_input()
 
         if input_state.escape:

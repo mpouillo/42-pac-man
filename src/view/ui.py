@@ -42,15 +42,16 @@ class GameView:
         self._wall_height_3d = 0.5
 
         self._camera: Any = ray.Camera3D(
-            ray.Vector3(0.0, 18.0, 18.0),
+            ray.Vector3(0.0, 12.0, 10.0), # position z = bas du maze (maze_y // 2)
             ray.Vector3(0.0, 0.0, 0.0),
             ray.Vector3(0.0, 1.0, 0.0),
-            45.0,
+            100.0,
             ray.CameraProjection.CAMERA_PERSPECTIVE,
         )
 
     def initialize(self, window_width: int, window_height: int) -> None:
         """Initialize the game window."""
+        ray.set_trace_log_level(ray.LOG_ERROR)
         self._window_width = window_width
         self._window_height = window_height
         ray.init_window(window_width, window_height, "Pac-Man")
@@ -150,7 +151,7 @@ class GameView:
         )
 
     def _draw_name_popup(self) -> None:
-        """Draw the pseudo input popup before starting a game."""
+        """Draw the username input popup before starting a game."""
         ray.draw_rectangle(
             0,
             0,
@@ -180,7 +181,7 @@ class GameView:
         )
 
         self._draw_centered_text(
-            "Enter your pseudo",
+            "Enter your username",
             popup_y + 30,
             28,
             SELECTED_COLOR,

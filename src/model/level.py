@@ -36,8 +36,6 @@ class LevelData(BaseModel):
         if isinstance(val, dict):
             return {
                 GhostType[k.upper()] if (
-                    # isinstance(k, str) and
-                    # k.upper() in GhostState.__members__
                     isinstance(k, str) and k.upper() in GhostType.__members__
                     ) else k: v
                 for k, v in val.items()
@@ -132,7 +130,8 @@ class Level:
                 x = cx * 2 + 1
                 y = cy * 2 + 1
 
-                grid[y][x] = CellState.PACGUM
+                if not (cell == 0xF):
+                    grid[y][x] = CellState.PACGUM
 
                 if not (cell & TOP):
                     grid[y - 1][x] = CellState.PACGUM

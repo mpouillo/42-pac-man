@@ -40,12 +40,13 @@ class GameView:
 
         self._cell_size_3d = 1.0
         self._wall_height_3d = 0.5
+        self._fov = 100.0
 
         self._camera: Any = ray.Camera3D(
-            ray.Vector3(0.0, 12.0, 10.0), # position z = bas du maze (maze_y // 2)
+            ray.Vector3(0.0, 18.0, 18.0), # position z = bas du maze (maze_y // 2)
             ray.Vector3(0.0, 0.0, 0.0),
             ray.Vector3(0.0, 1.0, 0.0),
-            100.0,
+            self._fov,
             ray.CameraProjection.CAMERA_PERSPECTIVE,
         )
 
@@ -68,6 +69,7 @@ class GameView:
         name_popup_open: bool = False,
         pending_player_name: str = "",
         name_error: str = "",
+        fov: float = 100.0,
     ) -> None:
         """Receive UI-only state from the controller."""
         self._main_menu_index = main_menu_index
@@ -76,6 +78,9 @@ class GameView:
         self._name_popup_open = name_popup_open
         self._pending_player_name = pending_player_name
         self._name_error = name_error
+
+        self._fov = fov
+        self._camera.fovy = self._fov
 
     def render(self, model: ModelProtocol) -> None:
         """Render one frame."""
@@ -86,9 +91,6 @@ class GameView:
 
         if phase == GamePhase.MAIN_MENU:
             self._draw_main_menu()
-
-            if self._name_popup_open:
-                self._draw_name_popup()
 
         elif phase == GamePhase.HIGHSCORES_MENU:
             self._draw_highscores(model)
@@ -106,8 +108,14 @@ class GameView:
         elif phase == GamePhase.GAME_OVER:
             self._draw_end_screen(model, "GAME OVER")
 
+            if self._name_popup_open:
+                self._draw_name_popup()
+
         elif phase == GamePhase.WIN:
             self._draw_end_screen(model, "YOU WIN!")
+
+            if self._name_popup_open:
+                self._draw_name_popup()
 
         ray.end_drawing()
 
@@ -405,17 +413,17 @@ class GameView:
     ) -> None:
         """Draw one 3D pacgum or super pacgum."""
         if is_super:
-            radius = 0.18
+            radius = 0.23
             color = SUPER_PACGUM_COLOR
         else:
-            radius = 0.07
+            radius = 0.13
             color = PACGUM_COLOR
 
         position = self._grid_to_world(
             float(grid_x),
             float(grid_y),
             grid,
-            radius,
+            self._wall_height_3d / 2,
         )
 
         ray.draw_sphere(position, radius, color)
@@ -499,7 +507,7 @@ class GameView:
         level = model.get_current_level() + 1
 
         left_text = f"Score: {model.get_score()}   Lives: {model.get_lives()}"
-        right_text = f"Level: {level}   Time: {time_left}"
+        right_text = f"FOV: {int(self._fov)}   Level: {level}   Time: {time_left}"
 
         ray.draw_text(left_text, 24, 22, 26, TEXT_COLOR)
 

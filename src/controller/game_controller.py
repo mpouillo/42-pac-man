@@ -18,6 +18,10 @@ WINDOW_WIDTH = 1280
 WINDOW_HEIGHT = 720
 TARGET_FPS = 60
 
+FOV_DEFAULT = 100.0
+FOV_MIN = 0.0
+FOV_MAX = 120.0
+FOV_SPEED = 60.0
 
 class GameController:
     """Main controller for the Pac-Man application."""
@@ -33,6 +37,7 @@ class GameController:
         self._pending_player_name = ""
         self._current_player_name = "PLAYER"
         self._name_error = ""
+        self._fov = FOV_DEFAULT
 
     def run(self) -> None:
         """Run the main game loop."""
@@ -82,6 +87,7 @@ class GameController:
             name_popup_open=self._name_popup_open,
             pending_player_name=self._pending_player_name,
             name_error=self._name_error,
+            fov=self._fov,
         )
         self._view.render(self._model)
 
@@ -103,9 +109,7 @@ class GameController:
         selected = self._main_menu.current()
 
         if selected == 0:
-            self._name_popup_open = True
-            self._pending_player_name = ""
-            self._name_error = ""
+            self._start_new_game()
 
         elif selected == 1:
             self._model.set_game_phase(GamePhase.HIGHSCORES_MENU)
@@ -180,6 +184,8 @@ class GameController:
             self._pause_menu.reset()
             return
 
+        self._update_fov(input_state, delta_time)
+
         if input_state.escape:
             self._model.set_game_phase(GamePhase.MAIN_MENU)
             self._main_menu.reset()
@@ -190,6 +196,20 @@ class GameController:
             self._model.set_player_input(direction)
 
         self._model.update(delta_time)
+
+    def _update_fov(
+        self,
+        input_state: InputState,
+        delta_time: float,
+    ) -> None:
+        """Update camera FOV with R/F keys."""
+        if input_state.fov_increase:
+            self._fov += FOV_SPEED * delta_time
+
+        if input_state.fov_decrease:
+            self._fov -= FOV_SPEED * delta_time
+
+        self._fov = max(FOV_MIN, min(FOV_MAX, self._fov))
 
     def _update_paused(self, input_state: InputState) -> None:
         """Handle pause menu input."""
@@ -226,19 +246,49 @@ class GameController:
             self._main_menu.reset()
 
     def _update_end_screen(self, input_state: InputState) -> None:
-        """Handle game over and win screens.
+        """Handle game over and win screens."""
 
-        Name input will be added later.
-        For now, ENTER submits a default name and returns to main menu.
-        """
+        if self._name_popup_open:
+            self._update_score_name_popup(input_state)
+            return
+
         if input_state.confirm:
-            self._model.submit_score(self._current_player_name)
-            self._model.set_game_phase(GamePhase.MAIN_MENU)
-            self._main_menu.reset()
+            self._name_popup_open = True
+            self._pending_player_name = ""
+            self._name_error = ""
 
         elif input_state.escape:
             self._model.set_game_phase(GamePhase.MAIN_MENU)
             self._main_menu.reset()
+
+    def _update_score_name_popup(self, input_state: InputState) -> None:
+        """Handle username popup after game over or win."""
+        self._read_pending_player_name_input()
+
+        if input_state.escape:
+            self._name_popup_open = False
+            self._pending_player_name = ""
+            self._name_error = ""
+            return
+
+        if not input_state.confirm:
+            return
+
+        player_name = self._pending_player_name.strip()
+
+        if not player_name:
+            self._name_error = "Name cannot be empty"
+            return
+
+        if not self._model.submit_score(player_name):
+            self._name_error = "Score could not be saved"
+            return
+
+        self._name_popup_open = False
+        self._pending_player_name = ""
+        self._name_error = ""
+        self._model.set_game_phase(GamePhase.MAIN_MENU)
+        self._main_menu.reset()
 
     def _toggle_wall_breaker(self) -> None:
         """Toggle wall breaker cheat through the model."""

@@ -130,8 +130,8 @@ class Level:
                 x = cx * 2 + 1
                 y = cy * 2 + 1
 
-                if not (cell == 0xF):
-                    grid[y][x] = CellState.PACGUM
+                grid[y][x] = CellState.PACGUM
+
                 if not (cell & TOP):
                     grid[y - 1][x] = CellState.PACGUM
                 if not (cell & RIGHT):

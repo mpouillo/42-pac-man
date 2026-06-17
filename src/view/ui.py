@@ -61,12 +61,12 @@ class GameView:
         self._name_error = ""
 
         self._cell_size_3d = 1.0
-        self._wall_height_3d = 0.5
+        self._wall_height_3d = 0.8
         self._fov = 100.0
         self._wall_models: dict[WallAssetKind, Any] = {}
 
         self._camera: Any = ray.Camera3D(
-            ray.Vector3(0.0, 18.0, 18.0), # position z = bas du maze (maze_y // 2)
+            ray.Vector3(0.0, 15.0, 20.0), # position z = bas du maze (maze_y // 2)
             ray.Vector3(0.0, 0.0, 0.0),
             ray.Vector3(0.0, 1.0, 0.0),
             self._fov,
@@ -459,6 +459,32 @@ class GameView:
         )
         self._draw_3d_wall_shape(position, shape)
 
+    def _draw_3d_wall_shadow(
+        self,
+        model: Any,
+        position: Any,
+        rotation: float,
+    ) -> None:
+        """Draw a fake flat shadow under the wall model."""
+        shadow_position = ray.Vector3(
+            position.x + 0.04,
+            0.01,
+            position.z + 0.04,
+        )
+
+        ray.draw_model_ex(
+            model,
+            shadow_position,
+            ray.Vector3(0.0, 1.0, 0.0),
+            rotation,
+            ray.Vector3(
+                WALL_MODEL_SCALE,
+                0.04,
+                WALL_MODEL_SCALE,
+            ),
+            ray.Color(0, 0, 0, 80),
+        )
+
     def _draw_3d_wall_shape(
         self,
         position: Any,
@@ -484,6 +510,8 @@ class GameView:
             position.z,
         )
 
+        self._draw_3d_wall_shadow(model, model_position, rotation)
+
         ray.draw_model_ex(
             model,
             model_position,
@@ -494,7 +522,7 @@ class GameView:
                 WALL_MODEL_SCALE,
                 WALL_MODEL_SCALE,
             ),
-            WALL_COLOR,
+            ray.WHITE,
         )
 
     def _draw_3d_pacgum(

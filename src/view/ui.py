@@ -1,5 +1,6 @@
 """Raylib based 3D user interface for Pac-Man."""
 
+from pathlib import Path
 from typing import Any
 
 import pyray as ray
@@ -8,6 +9,11 @@ from src.highscore import HighscoreEntry
 from src.types.dataclasses import GhostData
 from src.types.enums import CellState, GamePhase, GhostType
 from src.types.protocols import ModelProtocol
+from src.view.wall_shapes import (
+    WALL_SHAPE_RENDER_INFO,
+    WallShape,
+    get_wall_shape,
+)
 
 
 BACKGROUND = ray.Color(5, 5, 20, 255)
@@ -23,6 +29,9 @@ OVERLAY_COLOR = ray.Color(0, 0, 0, 190)
 FRIGHTENED_COLOR = ray.Color(40, 80, 255, 255)
 FLASHING_COLOR = ray.Color(255, 255, 255, 255)
 
+WALL_MODEL_PATH = Path("/home/zqian/zqian/42-pac-man/assets/model.gltf")
+WALL_MODEL_SCALE = 1.0
+WALL_MODEL_Y_OFFSET = 0.0
 
 class GameView:
     """Draw the current game state."""
@@ -41,6 +50,7 @@ class GameView:
         self._cell_size_3d = 1.0
         self._wall_height_3d = 0.5
         self._fov = 100.0
+        self._wall_model: Any | None = None
 
         self._camera: Any = ray.Camera3D(
             ray.Vector3(0.0, 18.0, 18.0), # position z = bas du maze (maze_y // 2)
@@ -56,9 +66,11 @@ class GameView:
         self._window_width = window_width
         self._window_height = window_height
         ray.init_window(window_width, window_height, "Pac-Man")
+        self._load_wall_model()
 
     def shutdown(self) -> None:
         """Close the game window."""
+        self._unload_wall_model()
         ray.close_window()
 
     def set_ui_state(
@@ -382,6 +394,26 @@ class GameView:
             BOARD_BACKGROUND,
         )
 
+    def _load_wall_model(self) -> None:
+        """Load the wall model once."""
+        if not WALL_MODEL_PATH.exists():
+            self._wall_model = None
+            return
+
+        try:
+            self._wall_model = ray.load_model(str(WALL_MODEL_PATH))
+        except Exception:
+            self._wall_model = None
+
+
+    def _unload_wall_model(self) -> None:
+        """Unload the wall model."""
+        if self._wall_model is None:
+            return
+
+        ray.unload_model(self._wall_model)
+        self._wall_model = None
+
     def _draw_3d_wall(
         self,
         grid_x: int,
@@ -389,18 +421,57 @@ class GameView:
         grid: list[list[CellState]],
     ) -> None:
         """Draw one 3D wall block."""
+        shape = get_wall_shape(grid, grid_x, grid_y)
+
         position = self._grid_to_world(
             float(grid_x),
             float(grid_y),
             grid,
             self._wall_height_3d / 2.0,
         )
+        self._draw_3d_wall_shape(position, shape)
+        # ray.draw_cube(
+        #     position,
+        #     self._cell_size_3d,
+        #     self._wall_height_3d,
+        #     self._cell_size_3d,
+        #     WALL_COLOR,
+        # )
 
-        ray.draw_cube(
-            position,
-            self._cell_size_3d,
-            self._wall_height_3d,
-            self._cell_size_3d,
+    def _draw_3d_wall_shape(
+        self,
+        position: Any,
+        shape: WallShape,
+    ) -> None:
+        """Draw one wall shape."""
+        _, rotation = WALL_SHAPE_RENDER_INFO[shape]
+
+        if self._wall_model is None:
+            ray.draw_cube(
+                position,
+                self._cell_size_3d,
+                self._wall_height_3d,
+                self._cell_size_3d,
+                WALL_COLOR,
+            )
+            return
+
+        model_position = ray.Vector3(
+            position.x,
+            position.y + WALL_MODEL_Y_OFFSET,
+            position.z,
+        )
+
+        ray.draw_model_ex(
+            self._wall_model,
+            model_position,
+            ray.Vector3(0.0, 1.0, 0.0),
+            rotation,
+            ray.Vector3(
+                WALL_MODEL_SCALE,
+                WALL_MODEL_SCALE,
+                WALL_MODEL_SCALE,
+            ),
             WALL_COLOR,
         )
 

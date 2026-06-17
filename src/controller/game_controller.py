@@ -99,9 +99,9 @@ class GameController:
 
         self._main_menu.update(input_state)
 
-        if input_state.escape:
-            self._running = False
-            return
+        # if input_state.escape:
+        #     self._running = False
+        #     return
 
         if not input_state.confirm:
             return
@@ -179,17 +179,12 @@ class GameController:
         delta_time: float,
     ) -> None:
         """Handle gameplay input and update model."""
-        if input_state.pause:
+        if input_state.escape:
             self._model.set_game_phase(GamePhase.PAUSED)
             self._pause_menu.reset()
             return
 
         self._update_fov(input_state, delta_time)
-
-        if input_state.escape:
-            self._model.set_game_phase(GamePhase.MAIN_MENU)
-            self._main_menu.reset()
-            return
 
         direction = self._get_direction_from_input(input_state)
         if direction != Direction.NONE:
@@ -215,13 +210,8 @@ class GameController:
         """Handle pause menu input."""
         self._pause_menu.update(input_state)
 
-        if input_state.pause:
-            self._model.set_game_phase(GamePhase.PLAYING)
-            return
-
         if input_state.escape:
-            self._model.set_game_phase(GamePhase.MAIN_MENU)
-            self._main_menu.reset()
+            self._model.set_game_phase(GamePhase.PLAYING)
             return
 
         if not input_state.confirm:
@@ -241,7 +231,7 @@ class GameController:
 
     def _update_simple_return_screen(self, input_state: InputState) -> None:
         """Handle highscores and instructions screens."""
-        if input_state.confirm or input_state.escape or input_state.pause:
+        if input_state.confirm or input_state.escape:
             self._model.set_game_phase(GamePhase.MAIN_MENU)
             self._main_menu.reset()
 
@@ -257,19 +247,9 @@ class GameController:
             self._pending_player_name = ""
             self._name_error = ""
 
-        elif input_state.escape:
-            self._model.set_game_phase(GamePhase.MAIN_MENU)
-            self._main_menu.reset()
-
     def _update_score_name_popup(self, input_state: InputState) -> None:
         """Handle username popup after game over or win."""
         self._read_pending_player_name_input()
-
-        if input_state.escape:
-            self._name_popup_open = False
-            self._pending_player_name = ""
-            self._name_error = ""
-            return
 
         if not input_state.confirm:
             return

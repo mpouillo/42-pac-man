@@ -11,6 +11,7 @@ from src.types.enums import CellState, GamePhase, GhostType
 from src.types.protocols import ModelProtocol
 from src.view.wall_shapes import (
     WALL_SHAPE_RENDER_INFO,
+    WallAssetKind,
     WallShape,
     get_wall_shape,
 )
@@ -29,7 +30,19 @@ OVERLAY_COLOR = ray.Color(0, 0, 0, 190)
 FRIGHTENED_COLOR = ray.Color(40, 80, 255, 255)
 FLASHING_COLOR = ray.Color(255, 255, 255, 255)
 
-WALL_MODEL_PATH = Path("/home/zqian/zqian/42-pac-man/assets/model.gltf")
+WALL_MODEL_DIR = Path(__file__).resolve().parents[2] / "assets" / "walls"
+
+WALL_MODEL_FILES = {
+    WallAssetKind.ISOLATED: "wall_isolated",
+    WallAssetKind.END: "wall_end",
+    WallAssetKind.STRAIGHT: "wall_straight",
+    WallAssetKind.CORNER: "wall_corner",
+    WallAssetKind.T_JUNCTION: "wall_t_junction",
+    WallAssetKind.CROSS: "wall_cross",
+}
+
+WALL_MODEL_EXTENSIONS = (".glb", ".obj", ".gltf")
+
 WALL_MODEL_SCALE = 1.0
 WALL_MODEL_Y_OFFSET = 0.0
 
@@ -50,7 +63,7 @@ class GameView:
         self._cell_size_3d = 1.0
         self._wall_height_3d = 0.5
         self._fov = 100.0
-        self._wall_model: Any | None = None
+        self._wall_models: dict[WallAssetKind, Any] = {}
 
         self._camera: Any = ray.Camera3D(
             ray.Vector3(0.0, 18.0, 18.0), # position z = bas du maze (maze_y // 2)
@@ -66,11 +79,12 @@ class GameView:
         self._window_width = window_width
         self._window_height = window_height
         ray.init_window(window_width, window_height, "Pac-Man")
-        self._load_wall_model()
+        ray.set_exit_key(ray.KeyboardKey.KEY_NULL)
+        self._load_wall_models()
 
     def shutdown(self) -> None:
         """Close the game window."""
-        self._unload_wall_model()
+        self._unload_wall_models()
         ray.close_window()
 
     def set_ui_state(
@@ -167,7 +181,7 @@ class GameView:
             title="Paused",
             options=options,
             selected_index=self._pause_menu_index,
-            footer="Space resumes the game",
+            footer="Escape: resume   Enter: select",
         )
 
     def _draw_name_popup(self) -> None:
@@ -249,7 +263,7 @@ class GameView:
             )
 
         self._draw_centered_text(
-            "Enter: start   Escape: cancel",
+            "Enter: save score",
             popup_y + 185,
             20,
             MUTED_TEXT_COLOR,
@@ -271,7 +285,7 @@ class GameView:
             self._draw_score_entries(scores)
 
         self._draw_centered_text(
-            "Press Enter, Space, or Escape to return",
+            "Press Enter or Escape to return",
             self._window_height - 80,
             22,
             MUTED_TEXT_COLOR,
@@ -299,9 +313,9 @@ class GameView:
 
         lines = [
             "Arrow keys: move Pac-Man",
-            "Space: pause or resume",
+            "Escape: pause or resume",
             "Enter: confirm menu selection",
-            "Escape: return to main menu",
+            "Enter: confirm menu selection",
             "",
             "Eat all pacgums to complete the level.",
             "Super pacgums make ghosts edible for a short time.",
@@ -314,7 +328,7 @@ class GameView:
             y += 34
 
         self._draw_centered_text(
-            "Press Enter, Space, or Escape to return",
+            "Press Enter or Escape to return",
             self._window_height - 80,
             22,
             MUTED_TEXT_COLOR,
@@ -328,13 +342,13 @@ class GameView:
         self._draw_centered_text(score_text, 230, 34, TEXT_COLOR)
 
         self._draw_centered_text(
-            "Press Enter to save as PLAYER",
+            "Press Enter to enter your username",
             310,
             26,
             TEXT_COLOR,
         )
         self._draw_centered_text(
-            "Press Escape to return without saving",
+            "Username is required to save the score",
             350,
             22,
             MUTED_TEXT_COLOR,
@@ -394,25 +408,39 @@ class GameView:
             BOARD_BACKGROUND,
         )
 
-    def _load_wall_model(self) -> None:
-        """Load the wall model once."""
-        if not WALL_MODEL_PATH.exists():
-            self._wall_model = None
-            return
+    def _load_wall_models(self) -> None:
+        """Load all wall models once."""
+        self._wall_models.clear()
 
-        try:
-            self._wall_model = ray.load_model(str(WALL_MODEL_PATH))
-        except Exception:
-            self._wall_model = None
+        for asset_kind, base_name in WALL_MODEL_FILES.items():
+            model = self._load_wall_asset(base_name)
+
+            if model is not None:
+                self._wall_models[asset_kind] = model
 
 
-    def _unload_wall_model(self) -> None:
-        """Unload the wall model."""
-        if self._wall_model is None:
-            return
+    def _load_wall_asset(self, base_name: str) -> Any | None:
+        """Load one wall model using the first available extension."""
+        for extension in WALL_MODEL_EXTENSIONS:
+            path = WALL_MODEL_DIR / f"{base_name}{extension}"
 
-        ray.unload_model(self._wall_model)
-        self._wall_model = None
+            if not path.exists():
+                continue
+
+            try:
+                return ray.load_model(str(path))
+            except Exception:
+                continue
+
+        return None
+
+
+    def _unload_wall_models(self) -> None:
+        """Unload all wall models."""
+        for model in self._wall_models.values():
+            ray.unload_model(model)
+
+        self._wall_models.clear()
 
     def _draw_3d_wall(
         self,
@@ -430,13 +458,6 @@ class GameView:
             self._wall_height_3d / 2.0,
         )
         self._draw_3d_wall_shape(position, shape)
-        # ray.draw_cube(
-        #     position,
-        #     self._cell_size_3d,
-        #     self._wall_height_3d,
-        #     self._cell_size_3d,
-        #     WALL_COLOR,
-        # )
 
     def _draw_3d_wall_shape(
         self,
@@ -444,9 +465,10 @@ class GameView:
         shape: WallShape,
     ) -> None:
         """Draw one wall shape."""
-        _, rotation = WALL_SHAPE_RENDER_INFO[shape]
+        asset_kind, rotation = WALL_SHAPE_RENDER_INFO[shape]
+        model = self._wall_models.get(asset_kind)
 
-        if self._wall_model is None:
+        if model is None:
             ray.draw_cube(
                 position,
                 self._cell_size_3d,
@@ -463,7 +485,7 @@ class GameView:
         )
 
         ray.draw_model_ex(
-            self._wall_model,
+            model,
             model_position,
             ray.Vector3(0.0, 1.0, 0.0),
             rotation,

@@ -75,17 +75,17 @@ WALL_SHAPE_RENDER_INFO = {
     WallShape.ISOLATED: (WallAssetKind.ISOLATED, 0.0),
 
     WallShape.END_UP: (WallAssetKind.END, 0.0),
-    WallShape.END_RIGHT: (WallAssetKind.END, 90.0),
+    WallShape.END_RIGHT: (WallAssetKind.END, 270.0),
     WallShape.END_DOWN: (WallAssetKind.END, 180.0),
-    WallShape.END_LEFT: (WallAssetKind.END, 270.0),
+    WallShape.END_LEFT: (WallAssetKind.END, 90.0),
 
     WallShape.VERTICAL: (WallAssetKind.STRAIGHT, 0.0),
     WallShape.HORIZONTAL: (WallAssetKind.STRAIGHT, 90.0),
 
     WallShape.CORNER_UP_RIGHT: (WallAssetKind.CORNER, 0.0),
-    WallShape.CORNER_DOWN_RIGHT: (WallAssetKind.CORNER, 90.0),
+    WallShape.CORNER_DOWN_RIGHT: (WallAssetKind.CORNER, 270.0),
     WallShape.CORNER_DOWN_LEFT: (WallAssetKind.CORNER, 180.0),
-    WallShape.CORNER_UP_LEFT: (WallAssetKind.CORNER, 270.0),
+    WallShape.CORNER_UP_LEFT: (WallAssetKind.CORNER, 90.0),
 
     WallShape.T_UP_LEFT_RIGHT: (WallAssetKind.T_JUNCTION, 0.0),
     WallShape.T_UP_DOWN_RIGHT: (WallAssetKind.T_JUNCTION, 90.0),

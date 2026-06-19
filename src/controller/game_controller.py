@@ -13,7 +13,11 @@ from src.controller.input import InputState, collect_input
 from src.controller.state_machine import MenuCursor
 from src.model.game_model import GameModel
 from src.types.enums import CheatType, Direction, GamePhase
-from src.view.ui import GameView
+from src.view.ui import (
+    CONTENT_FONT_SIZE,
+    MENU_ITEM_SPACING,
+    GameView,
+)
 
 
 WINDOW_WIDTH = 1980
@@ -25,9 +29,7 @@ FOV_MIN = 30.0
 FOV_MAX = 120.0
 FOV_SPEED = 60.0
 
-MENU_ITEM_SPACING = 44
 MENU_ITEM_HEIGHT = 40
-MENU_FONT_SIZE = 30
 
 
 class GameController:
@@ -148,9 +150,6 @@ class GameController:
             self._main_menu,
             ["Start Game", "Highscores", "Instructions", "Exit"],
         )
-        # if input_state.escape:
-        #     self._running = False
-        #     return
 
         if not input_state.confirm and not mouse_confirmed:
             return
@@ -211,7 +210,7 @@ class GameController:
 
         for index, option in enumerate(options):
             item_y = start_y + index * MENU_ITEM_SPACING
-            text_width = ray.measure_text(option, MENU_FONT_SIZE)
+            text_width = ray.measure_text(option, CONTENT_FONT_SIZE)
             text_x = (ray.get_screen_width() - text_width) // 2
 
             inside_x = text_x - 30 <= mouse_x <= text_x + text_width + 30

@@ -3,7 +3,6 @@
 from pathlib import Path
 from typing import Any
 
-import math
 import pyray as ray
 
 from src.types.dataclasses import GhostData
@@ -31,6 +30,13 @@ FRIGHTENED_COLOR = ray.Color(40, 80, 255, 255)
 FLASHING_COLOR = ray.Color(255, 255, 255, 255)
 
 INFO_PAGE_START_Y_RATIO = 0.25
+INFO_CONTENT_OFFSET = 100
+MENU_ITEM_SPACING = 44
+TITLE_FONT_SIZE = 48
+CONTENT_FONT_SIZE = 30
+
+AUTO_FOV_SCALE = 1.5
+AUTO_FOV_PADDING = 15.0
 
 WALL_MODEL_DIR = Path(__file__).resolve().parents[2] / "assets" / "walls"
 
@@ -223,15 +229,15 @@ class GameView:
         self._draw_centered_text(
             "Highscores",
             start_y,
-            48,
+            TITLE_FONT_SIZE,
             SELECTED_COLOR,
         )
 
         if not scores:
             self._draw_centered_text(
                 "No highscores yet",
-                start_y + 100,
-                26,
+                start_y + INFO_CONTENT_OFFSET,
+                CONTENT_FONT_SIZE,
                 TEXT_COLOR,
             )
         else:
@@ -239,15 +245,15 @@ class GameView:
                 text = f"{index + 1}. {entry.name} - {entry.score} pts"
                 self._draw_centered_text(
                     text,
-                    start_y + 100 + index * 36,
-                    26,
+                    start_y + INFO_CONTENT_OFFSET + index * 36,
+                    CONTENT_FONT_SIZE,
                     TEXT_COLOR,
                 )
 
         self._draw_centered_text(
             "Press Enter or Escape to return",
             self._window_height - 80,
-            22,
+            CONTENT_FONT_SIZE,
             MUTED_TEXT_COLOR,
         )
 
@@ -258,7 +264,7 @@ class GameView:
         self._draw_centered_text(
             "Highscores",
             start_y,
-            48,
+            TITLE_FONT_SIZE,
             SELECTED_COLOR,
         )
 
@@ -269,7 +275,7 @@ class GameView:
             self._draw_centered_text(
                 line,
                 y,
-                24,
+                CONTENT_FONT_SIZE,
                 TEXT_COLOR,
             )
             y += 32
@@ -281,7 +287,7 @@ class GameView:
         self._draw_centered_text(
             f"Enter name: {displayed_name}",
             self._window_height - 180,
-            26,
+            CONTENT_FONT_SIZE,
             TEXT_COLOR,
         )
 
@@ -289,7 +295,7 @@ class GameView:
             self._draw_centered_text(
                 self._name_error,
                 self._window_height - 140,
-                20,
+                CONTENT_FONT_SIZE,
                 ray.Color(255, 80, 80, 255),
             )
 
@@ -301,7 +307,7 @@ class GameView:
         self._draw_centered_text(
             footer,
             self._window_height - 90,
-            22,
+            CONTENT_FONT_SIZE,
             MUTED_TEXT_COLOR,
         )
 
@@ -423,32 +429,43 @@ class GameView:
         self._draw_centered_text(
             "Instructions",
             start_y,
-            48,
+            TITLE_FONT_SIZE,
             SELECTED_COLOR,
         )
 
         for index, line in enumerate(lines):
             self._draw_centered_text(
                 line,
-                start_y + 100 + index * 34,
-                24,
+                start_y + INFO_CONTENT_OFFSET + index * 34,
+                CONTENT_FONT_SIZE,
                 TEXT_COLOR,
             )
 
         self._draw_centered_text(
             "Press Enter or Escape to return",
             self._window_height - 80,
-            22,
+            CONTENT_FONT_SIZE,
             MUTED_TEXT_COLOR,
         )
 
     def _draw_end_screen(self, model: ModelProtocol, title: str) -> None:
         """Draw game over or victory screen."""
         start_y = self._info_page_start_y()
-        self._draw_centered_text(title, start_y, 56, SELECTED_COLOR)
+        self._draw_centered_text(
+            title,
+            start_y,
+            TITLE_FONT_SIZE,
+            SELECTED_COLOR,
+        )
 
         score_text = f"Final score: {model.get_score()}"
-        self._draw_centered_text(score_text, start_y + 100, 34, TEXT_COLOR)
+        score_y = start_y + INFO_CONTENT_OFFSET
+        self._draw_centered_text(
+            score_text,
+            score_y,
+            CONTENT_FONT_SIZE,
+            TEXT_COLOR,
+        )
 
     def _draw_game(self, model: ModelProtocol) -> None:
         """Draw gameplay screen."""
@@ -726,14 +743,14 @@ class GameView:
             f"FOV: {int(self._fov)}   Level: {level}   Time: {time_left}"
         )
 
-        ray.draw_text(left_text, 24, 22, 26, TEXT_COLOR)
+        ray.draw_text(left_text, 24, 22, CONTENT_FONT_SIZE, TEXT_COLOR)
 
-        width = ray.measure_text(right_text, 26)
+        width = ray.measure_text(right_text, CONTENT_FONT_SIZE)
         ray.draw_text(
             right_text,
             self._window_width - width - 24,
             22,
-            26,
+            CONTENT_FONT_SIZE,
             TEXT_COLOR,
         )
 
@@ -749,35 +766,36 @@ class GameView:
         self._draw_centered_text(
             title,
             start_y,
-            64,
+            TITLE_FONT_SIZE,
             SELECTED_COLOR,
         )
 
         for index, option in enumerate(options):
             color = SELECTED_COLOR if index == selected_index else TEXT_COLOR
-            item_y = start_y + 100 + index * 44
+            item_y = start_y + INFO_CONTENT_OFFSET
+            item_y += index * MENU_ITEM_SPACING
             self._draw_centered_text(
                 option,
                 item_y,
-                30,
+                CONTENT_FONT_SIZE,
                 color,
             )
             if index == selected_index:
-                option_width = ray.measure_text(option, 30)
+                option_width = ray.measure_text(option, CONTENT_FONT_SIZE)
                 option_x = (self._window_width - option_width) // 2
-                marker_width = ray.measure_text("> ", 30)
+                marker_width = ray.measure_text("> ", CONTENT_FONT_SIZE)
                 ray.draw_text(
                     "> ",
                     option_x - marker_width,
                     item_y,
-                    30,
+                    CONTENT_FONT_SIZE,
                     SELECTED_COLOR,
                 )
 
         self._draw_centered_text(
             footer,
             self._window_height - 90,
-            22,
+            CONTENT_FONT_SIZE,
             MUTED_TEXT_COLOR,
         )
 
@@ -795,7 +813,7 @@ class GameView:
 
     def get_menu_start_y(self) -> int:
         """Return the first menu item position for mouse handling."""
-        return self._info_page_start_y() + 100
+        return self._info_page_start_y() + INFO_CONTENT_OFFSET
 
     def _info_page_start_y(self) -> int:
         """Return the shared vertical start for information pages."""
@@ -808,28 +826,6 @@ class GameView:
 
         rows = len(grid)
         cols = len(grid[0])
-
-        world_width = cols * self._cell_size_3d
-        world_depth = rows * self._cell_size_3d
-
         aspect_ratio = self._window_width / self._window_height
-
-        half_fit_size = max(
-            world_depth,
-            world_width / aspect_ratio,
-        ) / 2.0
-
-        dx = self._camera.position.x - self._camera.target.x
-        dy = self._camera.position.y - self._camera.target.y
-        dz = self._camera.position.z - self._camera.target.z
-
-        camera_distance = math.sqrt(dx * dx + dy * dy + dz * dz)
-
-        if camera_distance <= 0:
-            return self._fov
-
-        fov_radians = 2.0 * math.atan(
-            half_fit_size / (camera_distance),
-        )
-
-        return math.degrees(fov_radians)
+        maze_size = max(rows, cols / aspect_ratio)
+        return maze_size * AUTO_FOV_SCALE + AUTO_FOV_PADDING

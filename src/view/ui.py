@@ -3,6 +3,7 @@
 from pathlib import Path
 from typing import Any
 
+import math
 import pyray as ray
 
 from src.highscore import HighscoreEntry
@@ -29,6 +30,7 @@ SELECTED_COLOR = ray.Color(255, 230, 0, 255)
 OVERLAY_COLOR = ray.Color(0, 0, 0, 190)
 FRIGHTENED_COLOR = ray.Color(40, 80, 255, 255)
 FLASHING_COLOR = ray.Color(255, 255, 255, 255)
+AUTO_FOV_SCREEN_FILL = 1
 
 WALL_MODEL_DIR = Path(__file__).resolve().parents[2] / "assets" / "walls"
 
@@ -701,3 +703,36 @@ class GameView:
         width = ray.measure_text(text, font_size)
         x = (self._window_width - width) // 2
         ray.draw_text(text, x, y, font_size, color)
+
+    def calculate_auto_fov(self, grid: list[list[CellState]]) -> float:
+        """Calculate a FOV that fits the current maze size."""
+        if not grid or not grid[0]:
+            return self._fov
+
+        rows = len(grid)
+        cols = len(grid[0])
+
+        world_width = cols * self._cell_size_3d
+        world_depth = rows * self._cell_size_3d
+
+        aspect_ratio = self._window_width / self._window_height
+
+        half_fit_size = max(
+            world_depth,
+            world_width / aspect_ratio,
+        ) / 2.0
+
+        dx = self._camera.position.x - self._camera.target.x
+        dy = self._camera.position.y - self._camera.target.y
+        dz = self._camera.position.z - self._camera.target.z
+
+        camera_distance = math.sqrt(dx * dx + dy * dy + dz * dz)
+
+        if camera_distance <= 0:
+            return self._fov
+
+        fov_radians = 2.0 * math.atan(
+            half_fit_size / (camera_distance * AUTO_FOV_SCREEN_FILL),
+        )
+
+        return math.degrees(fov_radians)

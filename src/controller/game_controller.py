@@ -18,8 +18,7 @@ WINDOW_WIDTH = 1980
 WINDOW_HEIGHT = 1080
 TARGET_FPS = 60
 
-FOV_DEFAULT = 100.0
-FOV_MIN = 0.0
+FOV_MIN = 30.0
 FOV_MAX = 120.0
 FOV_SPEED = 60.0
 
@@ -47,7 +46,9 @@ class GameController:
         self._pending_player_name = ""
         self._current_player_name = "PLAYER"
         self._name_error = ""
-        self._fov = FOV_DEFAULT
+        self._fov = FOV_MIN
+        self._auto_fov_enabled = True
+        self._last_fov_grid_size: tuple[int, int] | None = None
 
     def run(self) -> None:
         """Run the main game loop."""
@@ -91,6 +92,8 @@ class GameController:
 
     def _render(self) -> None:
         """Render current frame through the view."""
+        self._auto_update_fov()
+
         self._view.set_ui_state(
             main_menu_index=self._main_menu.current(),
             pause_menu_index=self._pause_menu.current(),
@@ -103,6 +106,32 @@ class GameController:
             fov=self._fov,
         )
         self._view.render(self._model)
+
+    def _clamp_fov(self, fov: float) -> float:
+        """Clamp FOV to the allowed range."""
+        return max(FOV_MIN, min(FOV_MAX, fov))
+
+    def _auto_update_fov(self) -> None:
+        """Automatically fit FOV to the current maze size."""
+        if not self._auto_fov_enabled:
+            return
+
+        grid = self._model.get_grid()
+
+        if not grid or not grid[0]:
+            return
+
+        rows = len(grid)
+        cols = len(grid[0])
+        grid_size = (cols, rows)
+
+        if self._last_fov_grid_size == grid_size:
+            return
+
+        self._last_fov_grid_size = grid_size
+
+        auto_fov = self._view.calculate_auto_fov(grid)
+        self._fov = self._clamp_fov(auto_fov)
 
     def _update_main_menu(self, input_state: InputState) -> None:
         """Handle main menu input."""
@@ -179,6 +208,8 @@ class GameController:
             CheatType.SPEED_BOOST: False,
         }
         self._wall_breaker_enabled = False
+        self._auto_fov_enabled = True
+        self._last_fov_grid_size = None
 
     def _read_pending_player_name_input(self) -> None:
         """Read username input while the start-game popup is open."""
@@ -250,13 +281,16 @@ class GameController:
         delta_time: float,
     ) -> None:
         """Update camera FOV with R/F keys."""
+        if input_state.fov_increase or input_state.fov_decrease:
+            self._auto_fov_enabled = False
+
         if input_state.fov_increase:
             self._fov += FOV_SPEED * delta_time
 
         if input_state.fov_decrease:
             self._fov -= FOV_SPEED * delta_time
 
-        self._fov = max(FOV_MIN, min(FOV_MAX, self._fov))
+        self._fov = self._clamp_fov(self._fov)
 
     def _update_paused(self, input_state: InputState) -> None:
         """Handle pause menu input."""

@@ -123,6 +123,7 @@ class GameModel(ModelProtocol):
         elif self._phase == GamePhase.PAUSED:
             return
         elif self._phase == GamePhase.GAME_OVER:
+            self._ghost_actions(delta_time)
             return
 
     def _win_round(self) -> None:

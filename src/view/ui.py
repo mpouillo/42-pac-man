@@ -132,6 +132,16 @@ class GameView:
             self._draw_pause_menu()
 
         elif phase == GamePhase.GAME_OVER:
+            self._draw_game(model)
+
+            ray.draw_rectangle(
+                0,
+                0,
+                self._window_width,
+                self._window_height,
+                OVERLAY_COLOR,
+            )
+
             self._draw_end_screen(model, "GAME OVER")
 
             if self._name_popup_open:
@@ -157,7 +167,7 @@ class GameView:
             title="Pac-Man",
             options=options,
             selected_index=self._main_menu_index,
-            footer="Use arrow keys and Enter",
+            footer="Escape: resume   Enter/click: select",
         )
 
     def _draw_pause_menu(self) -> None:

@@ -23,6 +23,10 @@ FOV_MIN = 0.0
 FOV_MAX = 120.0
 FOV_SPEED = 60.0
 
+MENU_START_Y = 230
+MENU_ITEM_SPACING = 44
+MENU_ITEM_HEIGHT = 40
+
 class GameController:
     """Main controller for the Pac-Man application."""
     def __init__(self, config: ConfigData) -> None:
@@ -73,6 +77,7 @@ class GameController:
             self._update_paused(input_state)
 
         elif phase == GamePhase.GAME_OVER:
+            self._model.update(delta_time)
             self._update_end_screen(input_state)
 
         elif phase == GamePhase.WIN:
@@ -98,12 +103,15 @@ class GameController:
             return
 
         self._main_menu.update(input_state)
-
+        mouse_confirmed = self._update_menu_mouse(
+            input_state,
+            self._main_menu,
+        )
         # if input_state.escape:
         #     self._running = False
         #     return
 
-        if not input_state.confirm:
+        if not input_state.confirm and not mouse_confirmed:
             return
 
         selected = self._main_menu.current()
@@ -119,6 +127,37 @@ class GameController:
 
         elif selected == 3:
             self._running = False
+
+    def _update_menu_mouse(
+        self,
+        input_state: InputState,
+        menu: MenuCursor,
+    ) -> bool:
+        """Update menu cursor with mouse hover and return True on click."""
+        index = self._menu_index_from_mouse(input_state.mouse_y, menu.size)
+
+        if index is None:
+            return False
+
+        menu.selected_index = index
+        return input_state.mouse_left_pressed
+
+    def _menu_index_from_mouse(self, mouse_y: int, size: int) -> int | None:
+        """Return the hovered menu index based on the mouse y position."""
+        if mouse_y < MENU_START_Y:
+            return None
+
+        index = (mouse_y - MENU_START_Y) // MENU_ITEM_SPACING
+
+        if index < 0 or index >= size:
+            return None
+
+        item_y = MENU_START_Y + index * MENU_ITEM_SPACING
+
+        if mouse_y > item_y + MENU_ITEM_HEIGHT:
+            return None
+
+        return int(index)
 
     def _start_new_game(self) -> None:
         """Create a fresh model and start a new game."""
@@ -209,12 +248,16 @@ class GameController:
     def _update_paused(self, input_state: InputState) -> None:
         """Handle pause menu input."""
         self._pause_menu.update(input_state)
+        mouse_confirmed = self._update_menu_mouse(
+            input_state,
+            self._pause_menu,
+        )
 
         if input_state.escape:
             self._model.set_game_phase(GamePhase.PLAYING)
             return
 
-        if not input_state.confirm:
+        if not input_state.confirm and not mouse_confirmed:
             return
 
         selected = self._pause_menu.current()

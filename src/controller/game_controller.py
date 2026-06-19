@@ -17,14 +17,15 @@ from src.view.ui import GameView
 WINDOW_WIDTH = 1980
 WINDOW_HEIGHT = 1080
 TARGET_FPS = 60
+GAME_OVER_DISPLAY_SECONDS = 5.0
 
 FOV_MIN = 30.0
 FOV_MAX = 120.0
 FOV_SPEED = 60.0
 
-MENU_START_Y = 230
 MENU_ITEM_SPACING = 44
 MENU_ITEM_HEIGHT = 40
+MENU_FONT_SIZE = 30
 
 
 class GameController:
@@ -43,8 +44,10 @@ class GameController:
         }
         self._name_popup_open = False
         self._pending_player_name = ""
-        self._current_player_name = "PLAYER"
         self._name_error = ""
+        self._game_over_timer = 0.0
+        self._score_entry_open = False
+        self._score_entry_saved = False
         self._fov = FOV_MIN
         self._auto_fov_enabled = True
         self._last_fov_grid_size: tuple[int, int] | None = None
@@ -85,7 +88,7 @@ class GameController:
 
         elif phase == GamePhase.GAME_OVER:
             self._model.update(delta_time)
-            self._update_end_screen(input_state)
+            self._update_game_over_flow(input_state, delta_time)
 
         elif phase == GamePhase.WIN:
             self._update_end_screen(input_state)
@@ -103,6 +106,8 @@ class GameController:
             name_popup_open=self._name_popup_open,
             pending_player_name=self._pending_player_name,
             name_error=self._name_error,
+            score_entry_open=self._score_entry_open,
+            score_entry_saved=self._score_entry_saved,
             fov=self._fov,
         )
         self._view.render(self._model)
@@ -135,9 +140,6 @@ class GameController:
 
     def _update_main_menu(self, input_state: InputState) -> None:
         """Handle main menu input."""
-        if self._name_popup_open:
-            self._update_name_popup(input_state)
-            return
 
         self._main_menu.update(input_state)
         mouse_confirmed = self._update_menu_mouse(
@@ -204,30 +206,19 @@ class GameController:
         options: list[str],
     ) -> int | None:
         """Return hovered menu index only if mouse is over option text."""
-        if mouse_y < MENU_START_Y:
-            return None
+        start_y = self._view.get_menu_start_y()
 
-        index = (mouse_y - MENU_START_Y) // MENU_ITEM_SPACING
+        for index, option in enumerate(options):
+            item_y = start_y + index * MENU_ITEM_SPACING
+            text_width = ray.measure_text(option, MENU_FONT_SIZE)
+            text_x = (WINDOW_WIDTH - text_width) // 2
 
-        if index < 0 or index >= len(options):
-            return None
+            inside_x = text_x - 30 <= mouse_x <= text_x + text_width + 30
+            inside_y = item_y <= mouse_y <= item_y + MENU_ITEM_HEIGHT
+            if inside_x and inside_y:
+                return index
 
-        item_y = MENU_START_Y + index * MENU_ITEM_SPACING
-
-        if mouse_y > item_y + MENU_ITEM_HEIGHT:
-            return None
-
-        option = options[index]
-        text_width = ray.measure_text(option, 30)
-        text_x = (WINDOW_WIDTH - text_width) // 2
-
-        if mouse_x < text_x:
-            return None
-
-        if mouse_x > text_x + text_width:
-            return None
-
-        return int(index)
+        return None
 
     def _start_new_game(self) -> None:
         """Create a fresh model and start a new game."""
@@ -242,6 +233,9 @@ class GameController:
         }
         self._auto_fov_enabled = True
         self._last_fov_grid_size = None
+        self._game_over_timer = 0.0
+        self._score_entry_open = False
+        self._score_entry_saved = False
 
     def _read_pending_player_name_input(self) -> None:
         """Read username input while the start-game popup is open."""
@@ -262,31 +256,6 @@ class GameController:
         if ray.is_key_pressed(ray.KeyboardKey.KEY_BACKSPACE):
             self._pending_player_name = self._pending_player_name[:-1]
             self._name_error = ""
-
-    def _update_name_popup(self, input_state: InputState) -> None:
-        """Handle the username popup before starting a game."""
-        self._read_pending_player_name_input()
-
-        if input_state.escape:
-            self._name_popup_open = False
-            self._pending_player_name = ""
-            self._name_error = ""
-            return
-
-        if not input_state.confirm:
-            return
-
-        player_name = self._pending_player_name.strip()
-
-        if not player_name:
-            self._name_error = "Name cannot be empty"
-            return
-
-        self._current_player_name = player_name
-        self._name_popup_open = False
-        self._pending_player_name = ""
-        self._name_error = ""
-        self._start_new_game()
 
     def _update_playing(
         self,
@@ -329,7 +298,7 @@ class GameController:
         self._pause_menu.update(input_state)
         mouse_confirmed = self._update_menu_mouse(
             input_state,
-            self._main_menu,
+            self._pause_menu,
             self._pause_menu_options(),
         )
 
@@ -361,11 +330,50 @@ class GameController:
             self._model.set_game_phase(GamePhase.MAIN_MENU)
             self._main_menu.reset()
 
+    def _pause_menu_options(self) -> list[str]:
+        invincibility = (
+            "ON" if self._cheat_states[CheatType.INVINCIBILITY] else "OFF"
+        )
+        ghost_freeze = (
+            "ON" if self._cheat_states[CheatType.GHOST_FREEZE] else "OFF"
+        )
+        speed_boost = (
+            "ON" if self._cheat_states[CheatType.SPEED_BOOST] else "OFF"
+        )
+
+        return [
+            "Resume",
+            f"Invincibility: {invincibility}",
+            f"Ghost Freeze: {ghost_freeze}",
+            f"Speed Boost: {speed_boost}",
+            "Level Skip",
+            "Return to Main Menu",
+        ]
+
     def _update_simple_return_screen(self, input_state: InputState) -> None:
         """Handle highscores and instructions screens."""
         if input_state.confirm or input_state.escape:
             self._model.set_game_phase(GamePhase.MAIN_MENU)
             self._main_menu.reset()
+
+    def _update_game_over_flow(
+        self,
+        input_state: InputState,
+        delta_time: float,
+    ) -> None:
+        """Handle the game-over overlay, then the score entry page."""
+        if not self._score_entry_open:
+            self._game_over_timer += delta_time
+
+            if self._game_over_timer >= GAME_OVER_DISPLAY_SECONDS:
+                self._score_entry_open = True
+                self._pending_player_name = ""
+                self._name_error = ""
+                self._score_entry_saved = False
+
+            return
+
+        self._update_score_entry(input_state)
 
     def _update_end_screen(self, input_state: InputState) -> None:
         """Handle game over and win screens."""
@@ -378,6 +386,33 @@ class GameController:
             self._name_popup_open = True
             self._pending_player_name = ""
             self._name_error = ""
+
+    def _update_score_entry(self, input_state: InputState) -> None:
+        """Handle username input on the score entry page."""
+        if self._score_entry_saved:
+            if input_state.confirm or input_state.escape:
+                self._model.set_game_phase(GamePhase.MAIN_MENU)
+                self._main_menu.reset()
+            return
+
+        self._read_pending_player_name_input()
+
+        if not input_state.confirm:
+            return
+
+        player_name = self._pending_player_name.strip()
+
+        if not player_name:
+            self._name_error = "Name cannot be empty"
+            return
+
+        if not self._model.submit_score(player_name):
+            self._name_error = "Score could not be saved"
+            return
+
+        self._pending_player_name = player_name
+        self._name_error = ""
+        self._score_entry_saved = True
 
     def _update_score_name_popup(self, input_state: InputState) -> None:
         """Handle username popup after game over or win."""

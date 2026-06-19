@@ -46,6 +46,7 @@ WALL_MODEL_EXTENSIONS = (".glb", ".obj", ".gltf")
 WALL_MODEL_SCALE = 1.0
 WALL_MODEL_Y_OFFSET = 0.0
 
+
 class GameView:
     """Draw the current game state."""
 
@@ -54,7 +55,9 @@ class GameView:
         self._window_height = 0
         self._main_menu_index = 0
         self._pause_menu_index = 0
-        self._wall_breaker_enabled = False
+        self._invincibility_enabled = False
+        self._ghost_freeze_enabled = False
+        self._speed_boost_enabled = False
 
         self._name_popup_open = False
         self._pending_player_name = ""
@@ -66,7 +69,7 @@ class GameView:
         self._wall_models: dict[WallAssetKind, Any] = {}
 
         self._camera: Any = ray.Camera3D(
-            ray.Vector3(0.0, 15.0, 20.0), # position z = bas du maze (maze_y // 2)
+            ray.Vector3(0.0, 15.0, 20.0),
             ray.Vector3(0.0, 0.0, 0.0),
             ray.Vector3(0.0, 1.0, 0.0),
             self._fov,
@@ -91,7 +94,9 @@ class GameView:
         self,
         main_menu_index: int,
         pause_menu_index: int,
-        wall_breaker_enabled: bool = False,
+        invincibility_enabled: bool = False,
+        ghost_freeze_enabled: bool = False,
+        speed_boost_enabled: bool = False,
         name_popup_open: bool = False,
         pending_player_name: str = "",
         name_error: str = "",
@@ -100,7 +105,9 @@ class GameView:
         """Receive UI-only state from the controller."""
         self._main_menu_index = main_menu_index
         self._pause_menu_index = pause_menu_index
-        self._wall_breaker_enabled = wall_breaker_enabled
+        self._invincibility_enabled = invincibility_enabled
+        self._ghost_freeze_enabled = ghost_freeze_enabled
+        self._speed_boost_enabled = speed_boost_enabled
         self._name_popup_open = name_popup_open
         self._pending_player_name = pending_player_name
         self._name_error = name_error
@@ -180,10 +187,16 @@ class GameView:
             OVERLAY_COLOR,
         )
 
-        wall_breaker = "ON" if self._wall_breaker_enabled else "OFF"
+        invincibility = "ON" if self._invincibility_enabled else "OFF"
+        ghost_freeze = "ON" if self._ghost_freeze_enabled else "OFF"
+        speed_boost = "ON" if self._speed_boost_enabled else "OFF"
+
         options = [
             "Resume",
-            f"Wall Breaker Cheat: {wall_breaker}",
+            f"Invincibility: {invincibility}",
+            f"Ghost Freeze: {ghost_freeze}",
+            f"Speed Boost: {speed_boost}",
+            "Level Skip",
             "Return to Main Menu",
         ]
 
@@ -428,7 +441,6 @@ class GameView:
             if model is not None:
                 self._wall_models[asset_kind] = model
 
-
     def _load_wall_asset(self, base_name: str) -> Any | None:
         """Load one wall model using the first available extension."""
         for extension in WALL_MODEL_EXTENSIONS:
@@ -443,7 +455,6 @@ class GameView:
                 continue
 
         return None
-
 
     def _unload_wall_models(self) -> None:
         """Unload all wall models."""

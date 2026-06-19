@@ -14,8 +14,8 @@ from src.types.enums import CheatType, Direction, GamePhase
 from src.view.ui import GameView
 
 
-WINDOW_WIDTH = 1280
-WINDOW_HEIGHT = 720
+WINDOW_WIDTH = 1980
+WINDOW_HEIGHT = 1080
 TARGET_FPS = 60
 
 FOV_DEFAULT = 100.0
@@ -27,6 +27,7 @@ MENU_START_Y = 230
 MENU_ITEM_SPACING = 44
 MENU_ITEM_HEIGHT = 40
 
+
 class GameController:
     """Main controller for the Pac-Man application."""
     def __init__(self, config: ConfigData) -> None:
@@ -35,7 +36,12 @@ class GameController:
         self._view = GameView()
         self._running = True
         self._main_menu = MenuCursor(size=4)
-        self._pause_menu = MenuCursor(size=3)
+        self._pause_menu = MenuCursor(size=6)
+        self._cheat_states: dict[CheatType, bool] = {
+            CheatType.INVINCIBILITY: False,
+            CheatType.GHOST_FREEZE: False,
+            CheatType.SPEED_BOOST: False,
+        }
         self._wall_breaker_enabled = False
         self._name_popup_open = False
         self._pending_player_name = ""
@@ -88,7 +94,9 @@ class GameController:
         self._view.set_ui_state(
             main_menu_index=self._main_menu.current(),
             pause_menu_index=self._pause_menu.current(),
-            wall_breaker_enabled=self._wall_breaker_enabled,
+            invincibility_enabled=self._cheat_states[CheatType.INVINCIBILITY],
+            ghost_freeze_enabled=self._cheat_states[CheatType.GHOST_FREEZE],
+            speed_boost_enabled=self._cheat_states[CheatType.SPEED_BOOST],
             name_popup_open=self._name_popup_open,
             pending_player_name=self._pending_player_name,
             name_error=self._name_error,
@@ -165,6 +173,11 @@ class GameController:
         self._model.set_game_phase(GamePhase.PLAYING)
 
         self._pause_menu.reset()
+        self._cheat_states = {
+            CheatType.INVINCIBILITY: False,
+            CheatType.GHOST_FREEZE: False,
+            CheatType.SPEED_BOOST: False,
+        }
         self._wall_breaker_enabled = False
 
     def _read_pending_player_name_input(self) -> None:
@@ -266,9 +279,18 @@ class GameController:
             self._model.set_game_phase(GamePhase.PLAYING)
 
         elif selected == 1:
-            self._toggle_wall_breaker()
+            self._toggle_cheat(CheatType.INVINCIBILITY)
 
         elif selected == 2:
+            self._toggle_cheat(CheatType.GHOST_FREEZE)
+
+        elif selected == 3:
+            self._toggle_cheat(CheatType.SPEED_BOOST)
+
+        elif selected == 4:
+            self._toggle_cheat(CheatType.LEVEL_SKIP)
+
+        elif selected == 5:
             self._model.set_game_phase(GamePhase.MAIN_MENU)
             self._main_menu.reset()
 
@@ -313,10 +335,12 @@ class GameController:
         self._model.set_game_phase(GamePhase.MAIN_MENU)
         self._main_menu.reset()
 
-    def _toggle_wall_breaker(self) -> None:
-        """Toggle wall breaker cheat through the model."""
-        self._wall_breaker_enabled = not self._wall_breaker_enabled
-        self._model.toggle_cheat(CheatType.WALL_JUMP)
+    def _toggle_cheat(self, cheat: CheatType) -> None:
+        """Toggle a cheat from the pause menu."""
+        if cheat in self._cheat_states:
+            self._cheat_states[cheat] = not self._cheat_states[cheat]
+
+        self._model.toggle_cheat(cheat)
 
     def _get_direction_from_input(
         self,

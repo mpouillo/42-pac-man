@@ -96,9 +96,12 @@ class GameModel(ModelProtocol):
     def toggle_cheat(self, cheat: CheatType) -> None:
         if cheat == CheatType.LEVEL_SKIP:
             self._win_round()
+            return
 
         if cheat in self._cheats:
             self._cheats.remove(cheat)
+            return
+
         self._cheats.append(cheat)
 
     def update(self, delta_time: float) -> None:

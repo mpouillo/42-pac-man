@@ -48,6 +48,7 @@ class GameController:
         self._fov = FOV_MIN
         self._auto_fov_enabled = True
         self._last_fov_grid_size: tuple[int, int] | None = None
+        self._last_mouse_position: tuple[int, int] | None = None
 
     def run(self) -> None:
         """Run the main game loop."""
@@ -142,6 +143,7 @@ class GameController:
         mouse_confirmed = self._update_menu_mouse(
             input_state,
             self._main_menu,
+            ["Start Game", "Highscores", "Instructions", "Exit"],
         )
         # if input_state.escape:
         #     self._running = False
@@ -168,9 +170,26 @@ class GameController:
         self,
         input_state: InputState,
         menu: MenuCursor,
+        options: list[str],
     ) -> bool:
-        """Update menu cursor with mouse hover and return True on click."""
-        index = self._menu_index_from_mouse(input_state.mouse_y, menu.size)
+        """Update menu cursor with mouse only when mouse is used."""
+        current_position = (input_state.mouse_x, input_state.mouse_y)
+
+        mouse_moved = (
+            self._last_mouse_position is not None
+            and current_position != self._last_mouse_position
+        )
+
+        self._last_mouse_position = current_position
+
+        if not mouse_moved and not input_state.mouse_left_pressed:
+            return False
+
+        index = self._menu_index_from_mouse(
+            input_state.mouse_x,
+            input_state.mouse_y,
+            options,
+        )
 
         if index is None:
             return False
@@ -178,19 +197,34 @@ class GameController:
         menu.selected_index = index
         return input_state.mouse_left_pressed
 
-    def _menu_index_from_mouse(self, mouse_y: int, size: int) -> int | None:
-        """Return the hovered menu index based on the mouse y position."""
+    def _menu_index_from_mouse(
+        self,
+        mouse_x: int,
+        mouse_y: int,
+        options: list[str],
+    ) -> int | None:
+        """Return hovered menu index only if mouse is over option text."""
         if mouse_y < MENU_START_Y:
             return None
 
         index = (mouse_y - MENU_START_Y) // MENU_ITEM_SPACING
 
-        if index < 0 or index >= size:
+        if index < 0 or index >= len(options):
             return None
 
         item_y = MENU_START_Y + index * MENU_ITEM_SPACING
 
         if mouse_y > item_y + MENU_ITEM_HEIGHT:
+            return None
+
+        option = options[index]
+        text_width = ray.measure_text(option, 30)
+        text_x = (WINDOW_WIDTH - text_width) // 2
+
+        if mouse_x < text_x:
+            return None
+
+        if mouse_x > text_x + text_width:
             return None
 
         return int(index)
@@ -295,7 +329,8 @@ class GameController:
         self._pause_menu.update(input_state)
         mouse_confirmed = self._update_menu_mouse(
             input_state,
-            self._pause_menu,
+            self._main_menu,
+            self._pause_menu_options(),
         )
 
         if input_state.escape:

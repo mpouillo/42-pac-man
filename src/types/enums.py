@@ -14,7 +14,6 @@ class CheatType(Enum):
     LEVEL_SKIP = auto()
     GHOST_FREEZE = auto()
     SPEED_BOOST = auto()
-    WALL_JUMP = auto()
 
 
 class Direction(Enum):

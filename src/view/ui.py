@@ -52,13 +52,13 @@ WALL_MODEL_FILES = {
 WALL_MODEL_EXTENSIONS = (".glb", ".obj", ".gltf")
 
 WALL_MODEL_SCALE = 1.0
-WALL_MODEL_Y_OFFSET = 0.0
 
 
 class GameView:
     """Draw the current game state."""
 
     def __init__(self) -> None:
+        """Initialize UI state, camera, and unloaded assets."""
         self._window_width = 0
         self._window_height = 0
         self._main_menu_index = 0
@@ -188,7 +188,7 @@ class GameView:
             title="Pac-Man",
             options=options,
             selected_index=self._main_menu_index,
-            footer="Escape: resume   Enter/click: select",
+            footer="Enter/click: select",
         )
 
     def _draw_pause_menu(self) -> None:
@@ -419,6 +419,8 @@ class GameView:
             "Arrow keys or WASD: move Pac-Man",
             "Escape: pause or resume",
             "Enter: confirm menu selection",
+            "F/R: adjust camera FOV",
+            "Pause menu: cheat options for testing",
             "",
             "Eat all pacgums to complete the level.",
             "Super pacgums make ghosts edible for a short time.",
@@ -617,7 +619,7 @@ class GameView:
 
         model_position = ray.Vector3(
             position.x,
-            position.y + WALL_MODEL_Y_OFFSET,
+            position.y,
             position.z,
         )
 
@@ -822,6 +824,9 @@ class GameView:
     def calculate_auto_fov(self, grid: list[list[CellState]]) -> float:
         """Calculate a FOV that fits the current maze size."""
         if not grid or not grid[0]:
+            return self._fov
+
+        if self._window_height <= 0:
             return self._fov
 
         rows = len(grid)

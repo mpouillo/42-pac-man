@@ -1,3 +1,5 @@
+"""Wall shape detection and model rotation mappings."""
+
 from enum import Enum
 
 from src.types.enums import CellState

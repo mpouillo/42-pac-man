@@ -34,7 +34,9 @@ MENU_ITEM_HEIGHT = 40
 
 class GameController:
     """Main controller for the Pac-Man application."""
+
     def __init__(self, config: ConfigData) -> None:
+        """Initialize the model, view, menus, and UI state."""
         self._config = config
         self._model = GameModel(config)
         self._view = GameView()
@@ -53,7 +55,6 @@ class GameController:
         self._score_entry_saved = False
         self._fov = FOV_MIN
         self._auto_fov_enabled = True
-        self._last_fov_grid_size: tuple[int, int] | None = None
         self._last_mouse_position: tuple[int, int] | None = None
 
     def run(self) -> None:
@@ -61,14 +62,15 @@ class GameController:
         self._view.initialize(WINDOW_WIDTH, WINDOW_HEIGHT)
         ray.set_target_fps(TARGET_FPS)
 
-        while self._running and not ray.window_should_close():
-            input_state = collect_input()
-            delta_time = ray.get_frame_time()
+        try:
+            while self._running and not ray.window_should_close():
+                input_state = collect_input()
+                delta_time = ray.get_frame_time()
 
-            self._update(input_state, delta_time)
-            self._render()
-
-        self._view.shutdown()
+                self._update(input_state, delta_time)
+                self._render()
+        finally:
+            self._view.shutdown()
 
     def _update(self, input_state: InputState, delta_time: float) -> None:
         """Update controller and model according to current game phase."""
@@ -129,21 +131,11 @@ class GameController:
         if not grid or not grid[0]:
             return
 
-        rows = len(grid)
-        cols = len(grid[0])
-        grid_size = (cols, rows)
-
-        if self._last_fov_grid_size == grid_size:
-            return
-
-        self._last_fov_grid_size = grid_size
-
         auto_fov = self._view.calculate_auto_fov(grid)
         self._fov = self._clamp_fov(auto_fov)
 
     def _update_main_menu(self, input_state: InputState) -> None:
         """Handle main menu input."""
-
         self._main_menu.update(input_state)
         mouse_confirmed = self._update_menu_mouse(
             input_state,
@@ -232,7 +224,6 @@ class GameController:
             CheatType.SPEED_BOOST: False,
         }
         self._auto_fov_enabled = True
-        self._last_fov_grid_size = None
         self._end_screen_timer = 0.0
         self._score_entry_open = False
         self._score_entry_saved = False
@@ -333,6 +324,7 @@ class GameController:
             self._main_menu.reset()
 
     def _pause_menu_options(self) -> list[str]:
+        """Return pause menu labels with current cheat states."""
         invincibility = (
             "ON" if self._cheat_states[CheatType.INVINCIBILITY] else "OFF"
         )

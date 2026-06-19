@@ -1,3 +1,5 @@
+"""Keyboard and mouse input collection."""
+
 from dataclasses import dataclass
 
 import pyray as ray
@@ -12,6 +14,7 @@ from pyray import (
 @dataclass(frozen=True)
 class InputState:
     """Keyboard input state for one frame."""
+
     up: bool = False
     down: bool = False
     left: bool = False

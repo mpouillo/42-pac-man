@@ -13,23 +13,23 @@ from src.controller.input import InputState, collect_input
 from src.controller.state_machine import MenuCursor
 from src.model.game_model import GameModel
 from src.types.enums import CheatType, Direction, GamePhase
-from src.view.ui import (
+from src.view.constants import (
     CONTENT_FONT_SIZE,
+    MENU_HITBOX_PADDING,
+    MENU_ITEM_HEIGHT,
     MENU_ITEM_SPACING,
-    GameView,
 )
+from src.view.ui import GameView
 
 
 WINDOW_WIDTH = 1980
 WINDOW_HEIGHT = 1080
 TARGET_FPS = 60
-END_SCREEN_DISPLAY_SECONDS = 5.0
+END_SCREEN_DISPLAY_SECONDS = 3.0
 
 FOV_MIN = 30.0
 FOV_MAX = 120.0
 FOV_SPEED = 60.0
-
-MENU_ITEM_HEIGHT = 40
 
 
 class GameController:
@@ -205,7 +205,11 @@ class GameController:
             text_width = ray.measure_text(option, CONTENT_FONT_SIZE)
             text_x = (ray.get_screen_width() - text_width) // 2
 
-            inside_x = text_x - 30 <= mouse_x <= text_x + text_width + 30
+            inside_x = (
+                text_x - MENU_HITBOX_PADDING
+                <= mouse_x
+                <= text_x + text_width + MENU_HITBOX_PADDING
+            )
             inside_y = item_y <= mouse_y <= item_y + MENU_ITEM_HEIGHT
             if inside_x and inside_y:
                 return index

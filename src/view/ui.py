@@ -6,7 +6,6 @@ from typing import Any
 import math
 import pyray as ray
 
-from src.highscore import HighscoreEntry
 from src.types.dataclasses import GhostData
 from src.types.enums import CellState, GamePhase, GhostType
 from src.types.protocols import ModelProtocol
@@ -30,6 +29,8 @@ SELECTED_COLOR = ray.Color(255, 230, 0, 255)
 OVERLAY_COLOR = ray.Color(0, 0, 0, 190)
 FRIGHTENED_COLOR = ray.Color(40, 80, 255, 255)
 FLASHING_COLOR = ray.Color(255, 255, 255, 255)
+
+INFO_PAGE_START_Y_RATIO = 0.25
 
 WALL_MODEL_DIR = Path(__file__).resolve().parents[2] / "assets" / "walls"
 
@@ -63,6 +64,8 @@ class GameView:
         self._name_popup_open = False
         self._pending_player_name = ""
         self._name_error = ""
+        self._score_entry_open = False
+        self._score_entry_saved = False
 
         self._cell_size_3d = 1.0
         self._wall_height_3d = 0.8
@@ -101,6 +104,8 @@ class GameView:
         name_popup_open: bool = False,
         pending_player_name: str = "",
         name_error: str = "",
+        score_entry_open: bool = False,
+        score_entry_saved: bool = False,
         fov: float = 100.0,
     ) -> None:
         """Receive UI-only state from the controller."""
@@ -112,6 +117,8 @@ class GameView:
         self._name_popup_open = name_popup_open
         self._pending_player_name = pending_player_name
         self._name_error = name_error
+        self._score_entry_open = score_entry_open
+        self._score_entry_saved = score_entry_saved
 
         self._fov = fov
         self._camera.fovy = self._fov
@@ -140,17 +147,20 @@ class GameView:
             self._draw_pause_menu()
 
         elif phase == GamePhase.GAME_OVER:
-            self._draw_game(model)
+            if self._score_entry_open:
+                self._draw_score_entry_page(model)
+            else:
+                self._draw_game(model)
 
-            ray.draw_rectangle(
-                0,
-                0,
-                self._window_width,
-                self._window_height,
-                OVERLAY_COLOR,
-            )
+                ray.draw_rectangle(
+                    0,
+                    0,
+                    self._window_width,
+                    self._window_height,
+                    OVERLAY_COLOR,
+                )
 
-            self._draw_end_screen(model, "GAME OVER")
+                self._draw_end_screen(model, "GAME OVER")
 
             if self._name_popup_open:
                 self._draw_name_popup()
@@ -295,18 +305,32 @@ class GameView:
 
     def _draw_highscores(self, model: ModelProtocol) -> None:
         """Draw highscore screen."""
-        self._draw_centered_text("Highscores", 90, 48, SELECTED_COLOR)
-
         scores = model.get_top_scores(10)
+        start_y = self._info_page_start_y()
+
+        self._draw_centered_text(
+            "Highscores",
+            start_y,
+            48,
+            SELECTED_COLOR,
+        )
+
         if not scores:
             self._draw_centered_text(
                 "No highscores yet",
-                200,
-                28,
+                start_y + 100,
+                26,
                 TEXT_COLOR,
             )
         else:
-            self._draw_score_entries(scores)
+            for index, entry in enumerate(scores):
+                text = f"{index + 1}. {entry.name} - {entry.score} pts"
+                self._draw_centered_text(
+                    text,
+                    start_y + 100 + index * 36,
+                    26,
+                    TEXT_COLOR,
+                )
 
         self._draw_centered_text(
             "Press Enter or Escape to return",
@@ -315,30 +339,167 @@ class GameView:
             MUTED_TEXT_COLOR,
         )
 
-    def _draw_score_entries(
-        self,
-        scores: list[HighscoreEntry],
-    ) -> None:
-        """Draw highscore entries."""
-        start_y = 170
+    def _draw_score_entry_page(self, model: ModelProtocol) -> None:
+        """Draw highscore preview and username input after game over."""
+        start_y = self._info_page_start_y()
 
-        for index, entry in enumerate(scores):
-            text = f"{index + 1}. {entry.name} - {entry.score} pts"
+        self._draw_centered_text(
+            "Highscores",
+            start_y,
+            48,
+            SELECTED_COLOR,
+        )
+
+        lines = self._build_score_entry_lines(model)
+
+        y = start_y + 70
+        for line in lines:
             self._draw_centered_text(
-                text,
-                start_y + index * 36,
-                26,
+                line,
+                y,
+                24,
                 TEXT_COLOR,
             )
+            y += 32
+
+        displayed_name = self._pending_player_name.strip()
+        if not displayed_name:
+            displayed_name = "_"
+
+        self._draw_centered_text(
+            f"Enter name: {displayed_name}",
+            self._window_height - 180,
+            26,
+            TEXT_COLOR,
+        )
+
+        if self._name_error:
+            self._draw_centered_text(
+                self._name_error,
+                self._window_height - 140,
+                20,
+                ray.Color(255, 80, 80, 255),
+            )
+
+        if self._score_entry_saved:
+            footer = "Score saved. Press Enter or Escape to return"
+        else:
+            footer = "Enter: save score"
+
+        self._draw_centered_text(
+            footer,
+            self._window_height - 90,
+            22,
+            MUTED_TEXT_COLOR,
+        )
+
+    def _build_score_entry_lines(self, model: ModelProtocol) -> list[str]:
+        """Build highscore preview lines with the current player's rank."""
+        scores = model.get_top_scores(1000)
+        current_score = model.get_score()
+
+        player_name = "YOU"
+        if self._score_entry_saved and self._pending_player_name.strip():
+            player_name = self._pending_player_name.strip()
+
+        base_scores = scores
+
+        if self._score_entry_saved:
+            base_scores = self._scores_without_current_saved_entry(
+                scores,
+                player_name,
+                current_score,
+            )
+
+        rank = 1 + sum(
+            1 for entry in base_scores
+            if entry.score >= current_score
+        )
+
+        if rank <= 10:
+            return self._build_top_ten_with_player(
+                base_scores,
+                rank,
+                player_name,
+                current_score,
+            )
+
+        lines = [
+            f"{index + 1}. {entry.name} - {entry.score} pts"
+            for index, entry in enumerate(base_scores[:10])
+        ]
+
+        if rank > 11:
+            lines.append("...")
+
+        lines.append(f"{rank}. {player_name} - {current_score} pts")
+        return lines
+
+    def _scores_without_current_saved_entry(
+        self,
+        scores: list[Any],
+        player_name: str,
+        current_score: int,
+    ) -> list[Any]:
+        """Remove the just-saved entry from display source to avoid duplication."""
+        filtered = []
+        removed = False
+
+        for entry in scores:
+            if (
+                not removed
+                and entry.name == player_name
+                and entry.score == current_score
+            ):
+                removed = True
+                continue
+
+            filtered.append(entry)
+
+        return filtered
+
+    def _build_top_ten_with_player(
+        self,
+        scores: list[Any],
+        rank: int,
+        player_name: str,
+        current_score: int,
+    ) -> list[str]:
+        """Build top 10 lines with current player inserted."""
+        lines = []
+        inserted = False
+        display_index = 1
+        score_index = 0
+
+        while len(lines) < 10:
+            if display_index == rank:
+                lines.append(
+                    f"{display_index}. {player_name} - {current_score} pts"
+                )
+                inserted = True
+                display_index += 1
+                continue
+
+            if score_index >= len(scores):
+                break
+
+            entry = scores[score_index]
+            lines.append(
+                f"{display_index}. {entry.name} - {entry.score} pts"
+            )
+            score_index += 1
+            display_index += 1
+
+        if not inserted and len(lines) < 10:
+            lines.append(f"{rank}. {player_name} - {current_score} pts")
+
+        return lines
 
     def _draw_instructions(self) -> None:
         """Draw instructions screen."""
-        self._draw_centered_text("Instructions", 80, 48, SELECTED_COLOR)
-
         lines = [
-            "Arrow keys: move Pac-Man",
+            "Arrow keys or WASD: move Pac-Man",
             "Escape: pause or resume",
-            "Enter: confirm menu selection",
             "Enter: confirm menu selection",
             "",
             "Eat all pacgums to complete the level.",
@@ -346,10 +507,21 @@ class GameView:
             "Avoid ghosts when they are not edible.",
         ]
 
-        y = 160
-        for line in lines:
-            self._draw_centered_text(line, y, 24, TEXT_COLOR)
-            y += 34
+        start_y = self._info_page_start_y()
+        self._draw_centered_text(
+            "Instructions",
+            start_y,
+            48,
+            SELECTED_COLOR,
+        )
+
+        for index, line in enumerate(lines):
+            self._draw_centered_text(
+                line,
+                start_y + 100 + index * 34,
+                24,
+                TEXT_COLOR,
+            )
 
         self._draw_centered_text(
             "Press Enter or Escape to return",
@@ -360,20 +532,21 @@ class GameView:
 
     def _draw_end_screen(self, model: ModelProtocol, title: str) -> None:
         """Draw game over or victory screen."""
-        self._draw_centered_text(title, 120, 56, SELECTED_COLOR)
+        start_y = self._info_page_start_y()
+        self._draw_centered_text(title, start_y, 56, SELECTED_COLOR)
 
         score_text = f"Final score: {model.get_score()}"
-        self._draw_centered_text(score_text, 230, 34, TEXT_COLOR)
+        self._draw_centered_text(score_text, start_y + 100, 34, TEXT_COLOR)
 
         self._draw_centered_text(
             "Press Enter to enter your username",
-            310,
+            start_y + 160,
             26,
             TEXT_COLOR,
         )
         self._draw_centered_text(
             "Username is required to save the score",
-            350,
+            start_y + 200,
             22,
             MUTED_TEXT_COLOR,
         )
@@ -650,7 +823,9 @@ class GameView:
         level = model.get_current_level() + 1
 
         left_text = f"Score: {model.get_score()}   Lives: {model.get_lives()}"
-        right_text = f"FOV: {int(self._fov)}   Level: {level}   Time: {time_left}"
+        right_text = (
+            f"FOV: {int(self._fov)}   Level: {level}   Time: {time_left}"
+        )
 
         ray.draw_text(left_text, 24, 22, 26, TEXT_COLOR)
 
@@ -671,18 +846,34 @@ class GameView:
         footer: str,
     ) -> None:
         """Draw a vertical menu."""
-        self._draw_centered_text(title, 100, 64, SELECTED_COLOR)
+        start_y = self._info_page_start_y()
+        self._draw_centered_text(
+            title,
+            start_y,
+            64,
+            SELECTED_COLOR,
+        )
 
-        start_y = 230
         for index, option in enumerate(options):
-            prefix = "> " if index == selected_index else "  "
             color = SELECTED_COLOR if index == selected_index else TEXT_COLOR
+            item_y = start_y + 100 + index * 44
             self._draw_centered_text(
-                prefix + option,
-                start_y + index * 44,
+                option,
+                item_y,
                 30,
                 color,
             )
+            if index == selected_index:
+                option_width = ray.measure_text(option, 30)
+                option_x = (self._window_width - option_width) // 2
+                marker_width = ray.measure_text("> ", 30)
+                ray.draw_text(
+                    "> ",
+                    option_x - marker_width,
+                    item_y,
+                    30,
+                    SELECTED_COLOR,
+                )
 
         self._draw_centered_text(
             footer,
@@ -702,6 +893,14 @@ class GameView:
         width = ray.measure_text(text, font_size)
         x = (self._window_width - width) // 2
         ray.draw_text(text, x, y, font_size, color)
+
+    def get_menu_start_y(self) -> int:
+        """Return the first menu item position for mouse handling."""
+        return self._info_page_start_y() + 100
+
+    def _info_page_start_y(self) -> int:
+        """Return the shared vertical start for information pages."""
+        return int(self._window_height * INFO_PAGE_START_Y_RATIO)
 
     def calculate_auto_fov(self, grid: list[list[CellState]]) -> float:
         """Calculate a FOV that fits the current maze size."""

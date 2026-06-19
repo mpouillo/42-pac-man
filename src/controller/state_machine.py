@@ -1,3 +1,5 @@
+"""Small reusable menu cursor state."""
+
 from dataclasses import dataclass
 
 from src.controller.input import InputState
@@ -6,6 +8,7 @@ from src.controller.input import InputState
 @dataclass
 class MenuCursor:
     """Menu cursor."""
+
     size: int
     selected_index: int = 0
 

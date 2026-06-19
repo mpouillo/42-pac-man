@@ -4,6 +4,8 @@ The controller connects input, model and view.
 It does not contain game rules and does not draw directly.
 """
 
+from contextlib import redirect_stdout
+
 import pyray as ray
 
 from src.config import ConfigData
@@ -17,7 +19,7 @@ from src.view.ui import GameView
 WINDOW_WIDTH = 1980
 WINDOW_HEIGHT = 1080
 TARGET_FPS = 60
-GAME_OVER_DISPLAY_SECONDS = 5.0
+END_SCREEN_DISPLAY_SECONDS = 5.0
 
 FOV_MIN = 30.0
 FOV_MAX = 120.0
@@ -42,10 +44,9 @@ class GameController:
             CheatType.GHOST_FREEZE: False,
             CheatType.SPEED_BOOST: False,
         }
-        self._name_popup_open = False
         self._pending_player_name = ""
         self._name_error = ""
-        self._game_over_timer = 0.0
+        self._end_screen_timer = 0.0
         self._score_entry_open = False
         self._score_entry_saved = False
         self._fov = FOV_MIN
@@ -87,11 +88,12 @@ class GameController:
             self._update_paused(input_state)
 
         elif phase == GamePhase.GAME_OVER:
-            self._model.update(delta_time)
-            self._update_game_over_flow(input_state, delta_time)
+            with redirect_stdout(None):
+                self._model.update(delta_time)
+            self._update_end_flow(input_state, delta_time)
 
         elif phase == GamePhase.WIN:
-            self._update_end_screen(input_state)
+            self._update_end_flow(input_state, delta_time)
 
     def _render(self) -> None:
         """Render current frame through the view."""
@@ -103,7 +105,6 @@ class GameController:
             invincibility_enabled=self._cheat_states[CheatType.INVINCIBILITY],
             ghost_freeze_enabled=self._cheat_states[CheatType.GHOST_FREEZE],
             speed_boost_enabled=self._cheat_states[CheatType.SPEED_BOOST],
-            name_popup_open=self._name_popup_open,
             pending_player_name=self._pending_player_name,
             name_error=self._name_error,
             score_entry_open=self._score_entry_open,
@@ -197,7 +198,7 @@ class GameController:
             return False
 
         menu.selected_index = index
-        return input_state.mouse_left_pressed
+        return bool(input_state.mouse_left_pressed)
 
     def _menu_index_from_mouse(
         self,
@@ -211,7 +212,7 @@ class GameController:
         for index, option in enumerate(options):
             item_y = start_y + index * MENU_ITEM_SPACING
             text_width = ray.measure_text(option, MENU_FONT_SIZE)
-            text_x = (WINDOW_WIDTH - text_width) // 2
+            text_x = (ray.get_screen_width() - text_width) // 2
 
             inside_x = text_x - 30 <= mouse_x <= text_x + text_width + 30
             inside_y = item_y <= mouse_y <= item_y + MENU_ITEM_HEIGHT
@@ -233,12 +234,14 @@ class GameController:
         }
         self._auto_fov_enabled = True
         self._last_fov_grid_size = None
-        self._game_over_timer = 0.0
+        self._end_screen_timer = 0.0
         self._score_entry_open = False
         self._score_entry_saved = False
+        self._pending_player_name = ""
+        self._name_error = ""
 
     def _read_pending_player_name_input(self) -> None:
-        """Read username input while the start-game popup is open."""
+        """Read username input on the score entry page."""
         char_code = ray.get_char_pressed()
 
         while char_code > 0:
@@ -356,36 +359,28 @@ class GameController:
             self._model.set_game_phase(GamePhase.MAIN_MENU)
             self._main_menu.reset()
 
-    def _update_game_over_flow(
+    def _update_end_flow(
         self,
         input_state: InputState,
         delta_time: float,
     ) -> None:
-        """Handle the game-over overlay, then the score entry page."""
+        """Show the end screen, then handle score entry."""
         if not self._score_entry_open:
-            self._game_over_timer += delta_time
+            self._end_screen_timer += delta_time
 
-            if self._game_over_timer >= GAME_OVER_DISPLAY_SECONDS:
-                self._score_entry_open = True
-                self._pending_player_name = ""
-                self._name_error = ""
-                self._score_entry_saved = False
+            if self._end_screen_timer >= END_SCREEN_DISPLAY_SECONDS:
+                self._open_score_entry()
 
             return
 
         self._update_score_entry(input_state)
 
-    def _update_end_screen(self, input_state: InputState) -> None:
-        """Handle game over and win screens."""
-
-        if self._name_popup_open:
-            self._update_score_name_popup(input_state)
-            return
-
-        if input_state.confirm:
-            self._name_popup_open = True
-            self._pending_player_name = ""
-            self._name_error = ""
+    def _open_score_entry(self) -> None:
+        """Open a fresh score entry page."""
+        self._score_entry_open = True
+        self._score_entry_saved = False
+        self._pending_player_name = ""
+        self._name_error = ""
 
     def _update_score_entry(self, input_state: InputState) -> None:
         """Handle username input on the score entry page."""
@@ -413,29 +408,6 @@ class GameController:
         self._pending_player_name = player_name
         self._name_error = ""
         self._score_entry_saved = True
-
-    def _update_score_name_popup(self, input_state: InputState) -> None:
-        """Handle username popup after game over or win."""
-        self._read_pending_player_name_input()
-
-        if not input_state.confirm:
-            return
-
-        player_name = self._pending_player_name.strip()
-
-        if not player_name:
-            self._name_error = "Name cannot be empty"
-            return
-
-        if not self._model.submit_score(player_name):
-            self._name_error = "Score could not be saved"
-            return
-
-        self._name_popup_open = False
-        self._pending_player_name = ""
-        self._name_error = ""
-        self._model.set_game_phase(GamePhase.MAIN_MENU)
-        self._main_menu.reset()
 
     def _toggle_cheat(self, cheat: CheatType) -> None:
         """Toggle a cheat from the pause menu."""

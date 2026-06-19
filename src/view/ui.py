@@ -61,7 +61,6 @@ class GameView:
         self._ghost_freeze_enabled = False
         self._speed_boost_enabled = False
 
-        self._name_popup_open = False
         self._pending_player_name = ""
         self._name_error = ""
         self._score_entry_open = False
@@ -101,7 +100,6 @@ class GameView:
         invincibility_enabled: bool = False,
         ghost_freeze_enabled: bool = False,
         speed_boost_enabled: bool = False,
-        name_popup_open: bool = False,
         pending_player_name: str = "",
         name_error: str = "",
         score_entry_open: bool = False,
@@ -114,7 +112,6 @@ class GameView:
         self._invincibility_enabled = invincibility_enabled
         self._ghost_freeze_enabled = ghost_freeze_enabled
         self._speed_boost_enabled = speed_boost_enabled
-        self._name_popup_open = name_popup_open
         self._pending_player_name = pending_player_name
         self._name_error = name_error
         self._score_entry_open = score_entry_open
@@ -125,6 +122,9 @@ class GameView:
 
     def render(self, model: ModelProtocol) -> None:
         """Render one frame."""
+        self._window_width = ray.get_screen_width()
+        self._window_height = ray.get_screen_height()
+
         ray.begin_drawing()
         ray.clear_background(BACKGROUND)
 
@@ -162,14 +162,11 @@ class GameView:
 
                 self._draw_end_screen(model, "GAME OVER")
 
-            if self._name_popup_open:
-                self._draw_name_popup()
-
         elif phase == GamePhase.WIN:
-            self._draw_end_screen(model, "YOU WIN!")
-
-            if self._name_popup_open:
-                self._draw_name_popup()
+            if self._score_entry_open:
+                self._draw_score_entry_page(model)
+            else:
+                self._draw_end_screen(model, "YOU WIN!")
 
         ray.end_drawing()
 
@@ -218,91 +215,6 @@ class GameView:
             footer="Escape: resume   Enter: select",
         )
 
-    def _draw_name_popup(self) -> None:
-        """Draw the username input popup before starting a game."""
-        ray.draw_rectangle(
-            0,
-            0,
-            self._window_width,
-            self._window_height,
-            OVERLAY_COLOR,
-        )
-
-        popup_width = 460
-        popup_height = 240
-        popup_x = (self._window_width - popup_width) // 2
-        popup_y = (self._window_height - popup_height) // 2
-
-        ray.draw_rectangle(
-            popup_x,
-            popup_y,
-            popup_width,
-            popup_height,
-            BACKGROUND,
-        )
-        ray.draw_rectangle_lines(
-            popup_x,
-            popup_y,
-            popup_width,
-            popup_height,
-            SELECTED_COLOR,
-        )
-
-        self._draw_centered_text(
-            "Enter your username",
-            popup_y + 30,
-            28,
-            SELECTED_COLOR,
-        )
-
-        input_width = 320
-        input_height = 44
-        input_x = (self._window_width - input_width) // 2
-        input_y = popup_y + 90
-
-        ray.draw_rectangle(
-            input_x,
-            input_y,
-            input_width,
-            input_height,
-            BOARD_BACKGROUND,
-        )
-        ray.draw_rectangle_lines(
-            input_x,
-            input_y,
-            input_width,
-            input_height,
-            TEXT_COLOR,
-        )
-
-        displayed_name = self._pending_player_name
-        if not displayed_name:
-            displayed_name = "_"
-
-        name_width = ray.measure_text(displayed_name, 24)
-        ray.draw_text(
-            displayed_name,
-            input_x + (input_width - name_width) // 2,
-            input_y + 10,
-            24,
-            TEXT_COLOR,
-        )
-
-        if self._name_error:
-            self._draw_centered_text(
-                self._name_error,
-                popup_y + 145,
-                18,
-                ray.Color(255, 80, 80, 255),
-            )
-
-        self._draw_centered_text(
-            "Enter: save score",
-            popup_y + 185,
-            20,
-            MUTED_TEXT_COLOR,
-        )
-
     def _draw_highscores(self, model: ModelProtocol) -> None:
         """Draw highscore screen."""
         scores = model.get_top_scores(10)
@@ -340,7 +252,7 @@ class GameView:
         )
 
     def _draw_score_entry_page(self, model: ModelProtocol) -> None:
-        """Draw highscore preview and username input after game over."""
+        """Draw highscore preview and username input after the game ends."""
         start_y = self._info_page_start_y()
 
         self._draw_centered_text(
@@ -441,8 +353,8 @@ class GameView:
         player_name: str,
         current_score: int,
     ) -> list[Any]:
-        """Remove the just-saved entry from display source to avoid duplication."""
-        filtered = []
+        """Remove the saved entry to avoid displaying it twice."""
+        filtered: list[Any] = []
         removed = False
 
         for entry in scores:
@@ -466,7 +378,7 @@ class GameView:
         current_score: int,
     ) -> list[str]:
         """Build top 10 lines with current player inserted."""
-        lines = []
+        lines: list[str] = []
         inserted = False
         display_index = 1
         score_index = 0
@@ -537,19 +449,6 @@ class GameView:
 
         score_text = f"Final score: {model.get_score()}"
         self._draw_centered_text(score_text, start_y + 100, 34, TEXT_COLOR)
-
-        self._draw_centered_text(
-            "Press Enter to enter your username",
-            start_y + 160,
-            26,
-            TEXT_COLOR,
-        )
-        self._draw_centered_text(
-            "Username is required to save the score",
-            start_y + 200,
-            22,
-            MUTED_TEXT_COLOR,
-        )
 
     def _draw_game(self, model: ModelProtocol) -> None:
         """Draw gameplay screen."""

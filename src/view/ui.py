@@ -30,7 +30,6 @@ SELECTED_COLOR = ray.Color(255, 230, 0, 255)
 OVERLAY_COLOR = ray.Color(0, 0, 0, 190)
 FRIGHTENED_COLOR = ray.Color(40, 80, 255, 255)
 FLASHING_COLOR = ray.Color(255, 255, 255, 255)
-AUTO_FOV_SCREEN_FILL = 1
 
 WALL_MODEL_DIR = Path(__file__).resolve().parents[2] / "assets" / "walls"
 
@@ -732,7 +731,7 @@ class GameView:
             return self._fov
 
         fov_radians = 2.0 * math.atan(
-            half_fit_size / (camera_distance * AUTO_FOV_SCREEN_FILL),
+            half_fit_size / (camera_distance),
         )
 
         return math.degrees(fov_radians)

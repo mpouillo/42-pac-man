@@ -41,7 +41,6 @@ class GameController:
             CheatType.GHOST_FREEZE: False,
             CheatType.SPEED_BOOST: False,
         }
-        self._wall_breaker_enabled = False
         self._name_popup_open = False
         self._pending_player_name = ""
         self._current_player_name = "PLAYER"
@@ -207,7 +206,6 @@ class GameController:
             CheatType.GHOST_FREEZE: False,
             CheatType.SPEED_BOOST: False,
         }
-        self._wall_breaker_enabled = False
         self._auto_fov_enabled = True
         self._last_fov_grid_size = None
 

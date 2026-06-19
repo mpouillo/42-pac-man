@@ -88,9 +88,9 @@ WALL_SHAPE_RENDER_INFO = {
     WallShape.CORNER_UP_LEFT: (WallAssetKind.CORNER, 90.0),
 
     WallShape.T_UP_LEFT_RIGHT: (WallAssetKind.T_JUNCTION, 0.0),
-    WallShape.T_UP_DOWN_RIGHT: (WallAssetKind.T_JUNCTION, 90.0),
+    WallShape.T_UP_DOWN_RIGHT: (WallAssetKind.T_JUNCTION, 270.0),
     WallShape.T_DOWN_LEFT_RIGHT: (WallAssetKind.T_JUNCTION, 180.0),
-    WallShape.T_UP_DOWN_LEFT: (WallAssetKind.T_JUNCTION, 270.0),
+    WallShape.T_UP_DOWN_LEFT: (WallAssetKind.T_JUNCTION, 90.0),
 
     WallShape.CROSS: (WallAssetKind.CROSS, 0.0),
 }

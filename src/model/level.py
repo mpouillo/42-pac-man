@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, cast
 
 from mazegenerator import MazeGenerator
 from pydantic import BaseModel, field_validator
@@ -24,7 +24,7 @@ class LevelData(BaseModel):
     size_x: int
     size_y: int
     time_limit: int
-    seed: int
+    seed: int | None = None
     pacman_spawn: Position
     ghost_spawns: Dict[GhostType, Position]
     super_pacgums: List[Position]
@@ -99,7 +99,7 @@ class Level:
     def _load_grid(self) -> List[List[CellState]]:
         gen = MazeGenerator(
             size=(self.data.size_x, self.data.size_y),
-            seed=self.data.seed
+            seed=cast(int, self.data.seed)
         )
         grid = self._convert_maze_to_grid(gen.maze)
         grid = self._setup_entities(grid, self.data)

@@ -40,6 +40,7 @@ class GameView(
         self._cell_size_3d = 1.0
         self._wall_height_3d = 0.8
         self._fov = 100.0
+        self._auto_fov_enabled = True
         self._wall_models: dict[WallAssetKind, Any] = {}
 
         self._camera: Any = ray.Camera3D(
@@ -75,7 +76,6 @@ class GameView(
         name_error: str = "",
         score_entry_open: bool = False,
         score_entry_saved: bool = False,
-        fov: float = 100.0,
     ) -> None:
         """Receive UI-only state from the controller."""
         self._main_menu_index = main_menu_index
@@ -87,9 +87,6 @@ class GameView(
         self._name_error = name_error
         self._score_entry_open = score_entry_open
         self._score_entry_saved = score_entry_saved
-
-        self._fov = fov
-        self._camera.fovy = self._fov
 
     def render(self, model: ModelProtocol) -> None:
         """Render one frame."""

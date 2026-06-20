@@ -11,32 +11,6 @@ WALL_DOWN = 4
 WALL_LEFT = 8
 
 
-class WallShape(Enum):
-    """All possible wall neighbor connection shapes."""
-
-    ISOLATED = "isolated"
-
-    END_UP = "end_up"
-    END_RIGHT = "end_right"
-    END_DOWN = "end_down"
-    END_LEFT = "end_left"
-
-    VERTICAL = "vertical"
-    HORIZONTAL = "horizontal"
-
-    CORNER_UP_LEFT = "corner_up_left"
-    CORNER_UP_RIGHT = "corner_up_right"
-    CORNER_DOWN_LEFT = "corner_down_left"
-    CORNER_DOWN_RIGHT = "corner_down_right"
-
-    T_UP_LEFT_RIGHT = "t_up_left_right"
-    T_DOWN_LEFT_RIGHT = "t_down_left_right"
-    T_UP_DOWN_LEFT = "t_up_down_left"
-    T_UP_DOWN_RIGHT = "t_up_down_right"
-
-    CROSS = "cross"
-
-
 class WallAssetKind(Enum):
     """Base wall asset type before rotation."""
 
@@ -48,53 +22,26 @@ class WallAssetKind(Enum):
     CROSS = "cross"
 
 
-WALL_MASK_TO_SHAPE = {
-    0: WallShape.ISOLATED,
-
-    WALL_UP: WallShape.END_UP,
-    WALL_RIGHT: WallShape.END_RIGHT,
-    WALL_DOWN: WallShape.END_DOWN,
-    WALL_LEFT: WallShape.END_LEFT,
-
-    WALL_UP | WALL_DOWN: WallShape.VERTICAL,
-    WALL_LEFT | WALL_RIGHT: WallShape.HORIZONTAL,
-
-    WALL_UP | WALL_LEFT: WallShape.CORNER_UP_LEFT,
-    WALL_UP | WALL_RIGHT: WallShape.CORNER_UP_RIGHT,
-    WALL_DOWN | WALL_LEFT: WallShape.CORNER_DOWN_LEFT,
-    WALL_DOWN | WALL_RIGHT: WallShape.CORNER_DOWN_RIGHT,
-
-    WALL_UP | WALL_LEFT | WALL_RIGHT: WallShape.T_UP_LEFT_RIGHT,
-    WALL_DOWN | WALL_LEFT | WALL_RIGHT: WallShape.T_DOWN_LEFT_RIGHT,
-    WALL_UP | WALL_DOWN | WALL_LEFT: WallShape.T_UP_DOWN_LEFT,
-    WALL_UP | WALL_DOWN | WALL_RIGHT: WallShape.T_UP_DOWN_RIGHT,
-
-    WALL_UP | WALL_RIGHT | WALL_DOWN | WALL_LEFT: WallShape.CROSS,
-}
-
-
-WALL_SHAPE_RENDER_INFO = {
-    WallShape.ISOLATED: (WallAssetKind.ISOLATED, 0.0),
-
-    WallShape.END_UP: (WallAssetKind.END, 0.0),
-    WallShape.END_RIGHT: (WallAssetKind.END, 270.0),
-    WallShape.END_DOWN: (WallAssetKind.END, 180.0),
-    WallShape.END_LEFT: (WallAssetKind.END, 90.0),
-
-    WallShape.VERTICAL: (WallAssetKind.STRAIGHT, 0.0),
-    WallShape.HORIZONTAL: (WallAssetKind.STRAIGHT, 90.0),
-
-    WallShape.CORNER_UP_RIGHT: (WallAssetKind.CORNER, 0.0),
-    WallShape.CORNER_DOWN_RIGHT: (WallAssetKind.CORNER, 270.0),
-    WallShape.CORNER_DOWN_LEFT: (WallAssetKind.CORNER, 180.0),
-    WallShape.CORNER_UP_LEFT: (WallAssetKind.CORNER, 90.0),
-
-    WallShape.T_UP_LEFT_RIGHT: (WallAssetKind.T_JUNCTION, 0.0),
-    WallShape.T_UP_DOWN_RIGHT: (WallAssetKind.T_JUNCTION, 270.0),
-    WallShape.T_DOWN_LEFT_RIGHT: (WallAssetKind.T_JUNCTION, 180.0),
-    WallShape.T_UP_DOWN_LEFT: (WallAssetKind.T_JUNCTION, 90.0),
-
-    WallShape.CROSS: (WallAssetKind.CROSS, 0.0),
+WALL_RENDER_INFO = {
+    0: (WallAssetKind.ISOLATED, 0.0),
+    WALL_UP: (WallAssetKind.END, 0.0),
+    WALL_RIGHT: (WallAssetKind.END, 270.0),
+    WALL_DOWN: (WallAssetKind.END, 180.0),
+    WALL_LEFT: (WallAssetKind.END, 90.0),
+    WALL_UP | WALL_DOWN: (WallAssetKind.STRAIGHT, 0.0),
+    WALL_LEFT | WALL_RIGHT: (WallAssetKind.STRAIGHT, 90.0),
+    WALL_UP | WALL_RIGHT: (WallAssetKind.CORNER, 0.0),
+    WALL_DOWN | WALL_RIGHT: (WallAssetKind.CORNER, 270.0),
+    WALL_DOWN | WALL_LEFT: (WallAssetKind.CORNER, 180.0),
+    WALL_UP | WALL_LEFT: (WallAssetKind.CORNER, 90.0),
+    WALL_UP | WALL_LEFT | WALL_RIGHT: (WallAssetKind.T_JUNCTION, 0.0),
+    WALL_UP | WALL_DOWN | WALL_RIGHT: (WallAssetKind.T_JUNCTION, 270.0),
+    WALL_DOWN | WALL_LEFT | WALL_RIGHT: (WallAssetKind.T_JUNCTION, 180.0),
+    WALL_UP | WALL_DOWN | WALL_LEFT: (WallAssetKind.T_JUNCTION, 90.0),
+    WALL_UP | WALL_RIGHT | WALL_DOWN | WALL_LEFT: (
+        WallAssetKind.CROSS,
+        0.0,
+    ),
 }
 
 
@@ -132,11 +79,11 @@ def get_wall_mask(
     return mask
 
 
-def get_wall_shape(
+def get_wall_render_info(
     grid: list[list[CellState]],
     x: int,
     y: int,
-) -> WallShape:
-    """Return the wall shape according to neighboring walls."""
+) -> tuple[WallAssetKind, float]:
+    """Return the wall asset and rotation for neighboring walls."""
     mask = get_wall_mask(grid, x, y)
-    return WALL_MASK_TO_SHAPE[mask]
+    return WALL_RENDER_INFO[mask]

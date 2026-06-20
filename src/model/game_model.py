@@ -39,7 +39,6 @@ class GameModel(ModelProtocol):
         self._score: int = 0
         self._lives: int = config.lives
         self._level_timer: float = self._level.data.time_limit
-        self._animation_timer: float = 0.0
 
     def get_game_phase(self) -> GamePhase:
         return self._phase

@@ -1,0 +1,23 @@
+{
+    "size_x": 8,
+    "size_y": 8,
+    "time_limit": 70,
+    "seed": null,
+    "pacman_spawn": { "x": 4, "y": 4 },
+    "ghost_spawns": {
+        "PINK": { "x": 1, "y": 1 },
+        "RED": { "x": 6, "y": 1 },
+        "ORANGE": { "x": 6, "y": 6 },
+        "BLUE": { "x": 1, "y": 6 }
+    },
+    "super_pacgums": [
+        { "x": 0, "y": 0 },
+        { "x": 7, "y": 0 },
+        { "x": 7, "y": 7 },
+        { "x": 0, "y": 7 }
+    ],
+    "difficulty": {
+        "ghost_speed": 0.90,
+        "fear_duration": 5.5
+    }
+}

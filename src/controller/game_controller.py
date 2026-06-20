@@ -10,26 +10,20 @@ import pyray as ray
 
 from src.config import ConfigData
 from src.controller.input import InputState, collect_input
-from src.controller.state_machine import MenuCursor
 from src.model.game_model import GameModel
 from src.types.enums import CheatType, Direction, GamePhase
 from src.view.constants import (
-    CONTENT_FONT_SIZE,
-    MENU_HITBOX_PADDING,
     MENU_ITEM_HEIGHT,
     MENU_ITEM_SPACING,
 )
+from src.view.menus import main_menu_options, pause_menu_options
 from src.view.ui import GameView
 
 
-WINDOW_WIDTH = 1980
-WINDOW_HEIGHT = 1080
+WINDOW_WIDTH = 2500
+WINDOW_HEIGHT = 1500
 TARGET_FPS = 60
 END_SCREEN_DISPLAY_SECONDS = 3.0
-
-FOV_MIN = 30.0
-FOV_MAX = 120.0
-FOV_SPEED = 60.0
 
 
 class GameController:
@@ -41,8 +35,8 @@ class GameController:
         self._model = GameModel(config)
         self._view = GameView()
         self._running = True
-        self._main_menu = MenuCursor(size=4)
-        self._pause_menu = MenuCursor(size=6)
+        self._main_menu_index = 0
+        self._pause_menu_index = 0
         self._cheat_states: dict[CheatType, bool] = {
             CheatType.INVINCIBILITY: False,
             CheatType.GHOST_FREEZE: False,
@@ -53,8 +47,6 @@ class GameController:
         self._end_screen_timer = 0.0
         self._score_entry_open = False
         self._score_entry_saved = False
-        self._fov = FOV_MIN
-        self._auto_fov_enabled = True
         self._last_mouse_position: tuple[int, int] | None = None
 
     def run(self) -> None:
@@ -101,11 +93,9 @@ class GameController:
 
     def _render(self) -> None:
         """Render current frame through the view."""
-        self._auto_update_fov()
-
         self._view.set_ui_state(
-            main_menu_index=self._main_menu.current(),
-            pause_menu_index=self._pause_menu.current(),
+            main_menu_index=self._main_menu_index,
+            pause_menu_index=self._pause_menu_index,
             invincibility_enabled=self._cheat_states[CheatType.INVINCIBILITY],
             ghost_freeze_enabled=self._cheat_states[CheatType.GHOST_FREEZE],
             speed_boost_enabled=self._cheat_states[CheatType.SPEED_BOOST],
@@ -113,40 +103,27 @@ class GameController:
             name_error=self._name_error,
             score_entry_open=self._score_entry_open,
             score_entry_saved=self._score_entry_saved,
-            fov=self._fov,
         )
         self._view.render(self._model)
 
-    def _clamp_fov(self, fov: float) -> float:
-        """Clamp FOV to the allowed range."""
-        return max(FOV_MIN, min(FOV_MAX, fov))
-
-    def _auto_update_fov(self) -> None:
-        """Automatically fit FOV to the current maze size."""
-        if not self._auto_fov_enabled:
-            return
-
-        grid = self._model.get_grid()
-
-        if not grid or not grid[0]:
-            return
-
-        auto_fov = self._view.calculate_auto_fov(grid)
-        self._fov = self._clamp_fov(auto_fov)
-
     def _update_main_menu(self, input_state: InputState) -> None:
         """Handle main menu input."""
-        self._main_menu.update(input_state)
-        mouse_confirmed = self._update_menu_mouse(
+        options = main_menu_options()
+        self._main_menu_index = self._move_menu_index(
+            self._main_menu_index,
+            len(options),
             input_state,
-            self._main_menu,
-            ["Start Game", "Highscores", "Instructions", "Exit"],
+        )
+        self._main_menu_index, mouse_confirmed = self._update_menu_mouse(
+            input_state,
+            self._main_menu_index,
+            len(options),
         )
 
         if not input_state.confirm and not mouse_confirmed:
             return
 
-        selected = self._main_menu.current()
+        selected = self._main_menu_index
 
         if selected == 0:
             self._start_new_game()
@@ -163,10 +140,10 @@ class GameController:
     def _update_menu_mouse(
         self,
         input_state: InputState,
-        menu: MenuCursor,
-        options: list[str],
-    ) -> bool:
-        """Update menu cursor with mouse only when mouse is used."""
+        selected_index: int,
+        size: int,
+    ) -> tuple[int, bool]:
+        """Return the mouse-selected menu index and confirmation state."""
         current_position = (input_state.mouse_x, input_state.mouse_y)
 
         mouse_moved = (
@@ -177,57 +154,59 @@ class GameController:
         self._last_mouse_position = current_position
 
         if not mouse_moved and not input_state.mouse_left_pressed:
-            return False
+            return selected_index, False
 
         index = self._menu_index_from_mouse(
-            input_state.mouse_x,
             input_state.mouse_y,
-            options,
+            size,
         )
 
         if index is None:
-            return False
+            return selected_index, False
 
-        menu.selected_index = index
-        return bool(input_state.mouse_left_pressed)
+        return index, bool(input_state.mouse_left_pressed)
 
     def _menu_index_from_mouse(
         self,
-        mouse_x: int,
         mouse_y: int,
-        options: list[str],
+        size: int,
     ) -> int | None:
-        """Return hovered menu index only if mouse is over option text."""
+        """Return hovered menu index from its vertical position."""
         start_y = self._view.get_menu_start_y()
+        index = (mouse_y - start_y) // MENU_ITEM_SPACING
 
-        for index, option in enumerate(options):
+        if 0 <= index < size:
             item_y = start_y + index * MENU_ITEM_SPACING
-            text_width = ray.measure_text(option, CONTENT_FONT_SIZE)
-            text_x = (ray.get_screen_width() - text_width) // 2
-
-            inside_x = (
-                text_x - MENU_HITBOX_PADDING
-                <= mouse_x
-                <= text_x + text_width + MENU_HITBOX_PADDING
-            )
-            inside_y = item_y <= mouse_y <= item_y + MENU_ITEM_HEIGHT
-            if inside_x and inside_y:
+            if item_y <= mouse_y <= item_y + MENU_ITEM_HEIGHT:
                 return index
 
         return None
+
+    def _move_menu_index(
+        self,
+        index: int,
+        size: int,
+        input_state: InputState,
+    ) -> int:
+        """Move a menu index with up/down input."""
+        if input_state.up:
+            return (index - 1) % size
+        if input_state.down:
+            return (index + 1) % size
+        return index
 
     def _start_new_game(self) -> None:
         """Create a fresh model and start a new game."""
         self._model = GameModel(self._config)
         self._model.set_game_phase(GamePhase.PLAYING)
 
-        self._pause_menu.reset()
+        self._pause_menu_index = 0
         self._cheat_states = {
             CheatType.INVINCIBILITY: False,
             CheatType.GHOST_FREEZE: False,
             CheatType.SPEED_BOOST: False,
         }
-        self._auto_fov_enabled = True
+        self._view.reset_fov()
         self._end_screen_timer = 0.0
         self._score_entry_open = False
         self._score_entry_saved = False
@@ -262,10 +241,15 @@ class GameController:
         """Handle gameplay input and update model."""
         if input_state.escape:
             self._model.set_game_phase(GamePhase.PAUSED)
-            self._pause_menu.reset()
+            self._pause_menu_index = 0
             return
 
-        self._update_fov(input_state, delta_time)
+        self._view.update_fov(
+            self._model.get_grid(),
+            input_state.fov_increase,
+            input_state.fov_decrease,
+            delta_time,
+        )
 
         direction = self._get_direction_from_input(input_state)
         if direction != Direction.NONE:
@@ -273,30 +257,22 @@ class GameController:
 
         self._model.update(delta_time)
 
-    def _update_fov(
-        self,
-        input_state: InputState,
-        delta_time: float,
-    ) -> None:
-        """Update camera FOV with R/F keys."""
-        if input_state.fov_increase or input_state.fov_decrease:
-            self._auto_fov_enabled = False
-
-        if input_state.fov_increase:
-            self._fov += FOV_SPEED * delta_time
-
-        if input_state.fov_decrease:
-            self._fov -= FOV_SPEED * delta_time
-
-        self._fov = self._clamp_fov(self._fov)
-
     def _update_paused(self, input_state: InputState) -> None:
         """Handle pause menu input."""
-        self._pause_menu.update(input_state)
-        mouse_confirmed = self._update_menu_mouse(
+        options = pause_menu_options(
+            self._cheat_states[CheatType.INVINCIBILITY],
+            self._cheat_states[CheatType.GHOST_FREEZE],
+            self._cheat_states[CheatType.SPEED_BOOST],
+        )
+        self._pause_menu_index = self._move_menu_index(
+            self._pause_menu_index,
+            len(options),
             input_state,
-            self._pause_menu,
-            self._pause_menu_options(),
+        )
+        self._pause_menu_index, mouse_confirmed = self._update_menu_mouse(
+            input_state,
+            self._pause_menu_index,
+            len(options),
         )
 
         if input_state.escape:
@@ -306,7 +282,7 @@ class GameController:
         if not input_state.confirm and not mouse_confirmed:
             return
 
-        selected = self._pause_menu.current()
+        selected = self._pause_menu_index
 
         if selected == 0:
             self._model.set_game_phase(GamePhase.PLAYING)
@@ -325,34 +301,13 @@ class GameController:
 
         elif selected == 5:
             self._model.set_game_phase(GamePhase.MAIN_MENU)
-            self._main_menu.reset()
-
-    def _pause_menu_options(self) -> list[str]:
-        """Return pause menu labels with current cheat states."""
-        invincibility = (
-            "ON" if self._cheat_states[CheatType.INVINCIBILITY] else "OFF"
-        )
-        ghost_freeze = (
-            "ON" if self._cheat_states[CheatType.GHOST_FREEZE] else "OFF"
-        )
-        speed_boost = (
-            "ON" if self._cheat_states[CheatType.SPEED_BOOST] else "OFF"
-        )
-
-        return [
-            "Resume",
-            f"Invincibility: {invincibility}",
-            f"Ghost Freeze: {ghost_freeze}",
-            f"Speed Boost: {speed_boost}",
-            "Level Skip",
-            "Return to Main Menu",
-        ]
+            self._main_menu_index = 0
 
     def _update_simple_return_screen(self, input_state: InputState) -> None:
         """Handle highscores and instructions screens."""
         if input_state.confirm or input_state.escape:
             self._model.set_game_phase(GamePhase.MAIN_MENU)
-            self._main_menu.reset()
+            self._main_menu_index = 0
 
     def _update_end_flow(
         self,
@@ -382,7 +337,7 @@ class GameController:
         if self._score_entry_saved:
             if input_state.confirm or input_state.escape:
                 self._model.set_game_phase(GamePhase.MAIN_MENU)
-                self._main_menu.reset()
+                self._main_menu_index = 0
             return
 
         self._read_pending_player_name_input()

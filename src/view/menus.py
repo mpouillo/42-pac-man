@@ -16,6 +16,36 @@ from src.view.constants import (
 )
 
 
+def main_menu_options() -> list[str]:
+    """Return the shared main menu labels."""
+    return [
+        "Start Game",
+        "Highscores",
+        "Instructions",
+        "Exit",
+    ]
+
+
+def pause_menu_options(
+    invincibility_enabled: bool,
+    ghost_freeze_enabled: bool,
+    speed_boost_enabled: bool,
+) -> list[str]:
+    """Return the shared pause menu labels."""
+    invincibility = "ON" if invincibility_enabled else "OFF"
+    ghost_freeze = "ON" if ghost_freeze_enabled else "OFF"
+    speed_boost = "ON" if speed_boost_enabled else "OFF"
+
+    return [
+        "Resume",
+        f"Invincibility: {invincibility}",
+        f"Ghost Freeze: {ghost_freeze}",
+        f"Speed Boost: {speed_boost}",
+        "Level Skip",
+        "Return to Main Menu",
+    ]
+
+
 class MenuRendererMixin:
     """Draw the main menu, pause menu, and shared menu layout."""
 
@@ -31,15 +61,9 @@ class MenuRendererMixin:
 
     def _draw_main_menu(self) -> None:
         """Draw the main menu."""
-        options = [
-            "Start Game",
-            "Highscores",
-            "Instructions",
-            "Exit",
-        ]
         self._draw_menu(
             title="Pac-Man",
-            options=options,
+            options=main_menu_options(),
             selected_index=self._main_menu_index,
             footer="Enter/click: select",
         )
@@ -54,22 +78,13 @@ class MenuRendererMixin:
             OVERLAY_COLOR,
         )
 
-        invincibility = "ON" if self._invincibility_enabled else "OFF"
-        ghost_freeze = "ON" if self._ghost_freeze_enabled else "OFF"
-        speed_boost = "ON" if self._speed_boost_enabled else "OFF"
-
-        options = [
-            "Resume",
-            f"Invincibility: {invincibility}",
-            f"Ghost Freeze: {ghost_freeze}",
-            f"Speed Boost: {speed_boost}",
-            "Level Skip",
-            "Return to Main Menu",
-        ]
-
         self._draw_menu(
             title="Paused",
-            options=options,
+            options=pause_menu_options(
+                self._invincibility_enabled,
+                self._ghost_freeze_enabled,
+                self._speed_boost_enabled,
+            ),
             selected_index=self._pause_menu_index,
             footer="Escape: resume   Enter: select",
         )

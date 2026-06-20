@@ -13,6 +13,9 @@ from src.view.constants import (
     BOARD_BACKGROUND,
     CONTENT_FONT_SIZE,
     FLASHING_COLOR,
+    FOV_MAX,
+    FOV_MIN,
+    FOV_SPEED,
     FRIGHTENED_COLOR,
     PACGUM_COLOR,
     PACMAN_COLOR,
@@ -25,10 +28,8 @@ from src.view.constants import (
     WALL_MODEL_SCALE,
 )
 from src.view.wall_shapes import (
-    WALL_SHAPE_RENDER_INFO,
     WallAssetKind,
-    WallShape,
-    get_wall_shape,
+    get_wall_render_info,
 )
 
 
@@ -40,6 +41,7 @@ class Scene3DRendererMixin:
     _cell_size_3d: float
     _wall_height_3d: float
     _fov: float
+    _auto_fov_enabled: bool
     _camera: Any
     _wall_models: dict[WallAssetKind, Any]
 
@@ -136,7 +138,7 @@ class Scene3DRendererMixin:
         grid: list[list[CellState]],
     ) -> None:
         """Draw one 3D wall block."""
-        shape = get_wall_shape(grid, grid_x, grid_y)
+        asset_kind, rotation = get_wall_render_info(grid, grid_x, grid_y)
 
         position = self._grid_to_world(
             float(grid_x),
@@ -144,41 +146,15 @@ class Scene3DRendererMixin:
             grid,
             self._wall_height_3d / 2.0,
         )
-        self._draw_3d_wall_shape(position, shape)
-
-    def _draw_3d_wall_shadow(
-        self,
-        model: Any,
-        position: Any,
-        rotation: float,
-    ) -> None:
-        """Draw a fake flat shadow under the wall model."""
-        shadow_position = ray.Vector3(
-            position.x + 0.04,
-            0.01,
-            position.z + 0.04,
-        )
-
-        ray.draw_model_ex(
-            model,
-            shadow_position,
-            ray.Vector3(0.0, 1.0, 0.0),
-            rotation,
-            ray.Vector3(
-                WALL_MODEL_SCALE,
-                0.04,
-                WALL_MODEL_SCALE,
-            ),
-            ray.Color(0, 0, 0, 80),
-        )
+        self._draw_3d_wall_shape(position, asset_kind, rotation)
 
     def _draw_3d_wall_shape(
         self,
         position: Any,
-        shape: WallShape,
+        asset_kind: WallAssetKind,
+        rotation: float,
     ) -> None:
         """Draw one wall shape."""
-        asset_kind, rotation = WALL_SHAPE_RENDER_INFO[shape]
         model = self._wall_models.get(asset_kind)
 
         if model is None:
@@ -193,11 +169,9 @@ class Scene3DRendererMixin:
 
         model_position = ray.Vector3(
             position.x,
-            position.y,
+            position.y + 0.01,
             position.z,
         )
-
-        self._draw_3d_wall_shadow(model, model_position, rotation)
 
         ray.draw_model_ex(
             model,
@@ -227,14 +201,14 @@ class Scene3DRendererMixin:
             radius = 0.13
             color = PACGUM_COLOR
 
-        position = self._grid_to_world(
+        self._draw_sphere_at(
             float(grid_x),
             float(grid_y),
             grid,
+            radius,
+            color,
             self._wall_height_3d / 2,
         )
-
-        ray.draw_sphere(position, radius, color)
 
     def _draw_3d_pacman(
         self,
@@ -242,19 +216,13 @@ class Scene3DRendererMixin:
         grid: list[list[CellState]],
     ) -> None:
         """Draw Pac-Man in 3D."""
-        radius = 0.35
-
-        position = self._grid_to_world(
+        self._draw_sphere_at(
             pacman.x,
             pacman.y,
             grid,
-            radius,
-        )
-
-        ray.draw_sphere(
-            position,
-            radius,
+            0.35,
             PACMAN_COLOR,
+            0.35,
         )
 
     def _draw_3d_ghost(
@@ -263,20 +231,27 @@ class Scene3DRendererMixin:
         grid: list[list[CellState]],
     ) -> None:
         """Draw one ghost in 3D."""
-        radius = 0.35
-
-        position = self._grid_to_world(
+        self._draw_sphere_at(
             ghost.x,
             ghost.y,
             grid,
-            radius,
+            0.35,
+            self._get_ghost_color(ghost),
+            0.35,
         )
 
-        ray.draw_sphere(
-            position,
-            radius,
-            self._get_ghost_color(ghost),
-        )
+    def _draw_sphere_at(
+        self,
+        grid_x: float,
+        grid_y: float,
+        grid: list[list[CellState]],
+        radius: float,
+        color: Any,
+        height: float,
+    ) -> None:
+        """Draw a sphere at a grid position."""
+        position = self._grid_to_world(grid_x, grid_y, grid, height)
+        ray.draw_sphere(position, radius, color)
 
     def _get_ghost_color(self, ghost: GhostData) -> Any:
         """Return ghost color according to type and state."""
@@ -343,3 +318,29 @@ class Scene3DRendererMixin:
         aspect_ratio = self._window_width / self._window_height
         maze_size = max(rows, cols / aspect_ratio)
         return maze_size * AUTO_FOV_SCALE + AUTO_FOV_PADDING
+
+    def reset_fov(self) -> None:
+        """Enable automatic FOV for a new game."""
+        self._auto_fov_enabled = True
+
+    def update_fov(
+        self,
+        grid: list[list[CellState]],
+        increase: bool,
+        decrease: bool,
+        delta_time: float,
+    ) -> None:
+        """Update automatic or keyboard-controlled camera FOV."""
+        if increase or decrease:
+            self._auto_fov_enabled = False
+
+        if self._auto_fov_enabled:
+            self._fov = self.calculate_auto_fov(grid)
+
+        if increase:
+            self._fov += FOV_SPEED * delta_time
+        if decrease:
+            self._fov -= FOV_SPEED * delta_time
+
+        self._fov = max(FOV_MIN, min(FOV_MAX, self._fov))
+        self._camera.fovy = self._fov

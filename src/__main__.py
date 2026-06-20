@@ -1,3 +1,5 @@
+import sys
+
 from src.config import load_config
 from src.controller.game_controller import GameController
 
@@ -9,4 +11,7 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except BaseException as e:
+        sys.exit(f"Error: {e}")

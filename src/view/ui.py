@@ -42,6 +42,7 @@ class GameView(
         self._fov = 100.0
         self._auto_fov_enabled = True
         self._wall_models: dict[WallAssetKind, Any] = {}
+        self._entity_models: dict[str, Any] = {}
 
         self._camera: Any = ray.Camera3D(
             ray.Vector3(0.0, 15.0, 20.0),
@@ -59,10 +60,12 @@ class GameView(
         ray.init_window(window_width, window_height, "Pac-Man")
         ray.set_exit_key(ray.KeyboardKey.KEY_NULL)
         self._load_wall_models()
+        self._load_entity_models()
 
     def shutdown(self) -> None:
         """Close the game window."""
         self._unload_wall_models()
+        self._unload_entity_models()
         ray.close_window()
 
     def set_ui_state(

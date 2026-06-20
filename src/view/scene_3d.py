@@ -5,7 +5,7 @@ from typing import Any
 import pyray as ray
 
 from src.types.dataclasses import GhostData
-from src.types.enums import CellState, GhostType
+from src.types.enums import CellState, Direction, GhostState, GhostType
 from src.types.protocols import ModelProtocol
 from src.view.constants import (
     AUTO_FOV_PADDING,
@@ -26,10 +26,16 @@ from src.view.constants import (
     WALL_MODEL_EXTENSIONS,
     WALL_MODEL_FILES,
     WALL_MODEL_SCALE,
+    ENTITY_MODEL_DIR,
+    ENTITY_MODEL_EXTENSIONS,
+    ENTITY_MODEL_FILES,
+    GHOST_MODEL_SCALE,
+    PACGUM_MODEL_SCALE,
+    PACMAN_MODEL_SCALE,
 )
 from src.view.wall_shapes import (
     WallAssetKind,
-    get_wall_render_info,
+    get_wall_asset_kind,
 )
 
 
@@ -44,6 +50,7 @@ class Scene3DRendererMixin:
     _auto_fov_enabled: bool
     _camera: Any
     _wall_models: dict[WallAssetKind, Any]
+    _entity_models: dict[str, Any]
 
     def _draw_game(self, model: ModelProtocol) -> None:
         """Draw gameplay screen."""
@@ -124,12 +131,44 @@ class Scene3DRendererMixin:
 
         return None
 
+    def _load_entity_models(self) -> None:
+        """Load Pac-Man, pacgum, and ghost models once."""
+        self._entity_models.clear()
+
+        for model_key, base_name in ENTITY_MODEL_FILES.items():
+            model = self._load_entity_asset(base_name)
+
+            if model is not None:
+                self._entity_models[model_key] = model
+
+    def _load_entity_asset(self, base_name: str) -> Any | None:
+        """Load one entity model using the first available extension."""
+        for extension in ENTITY_MODEL_EXTENSIONS:
+            path = ENTITY_MODEL_DIR / f"{base_name}{extension}"
+
+            if not path.exists():
+                continue
+
+            try:
+                return ray.load_model(str(path))
+            except Exception:
+                continue
+
+        return None
+
     def _unload_wall_models(self) -> None:
         """Unload all wall models."""
         for model in self._wall_models.values():
             ray.unload_model(model)
 
         self._wall_models.clear()
+
+    def _unload_entity_models(self) -> None:
+        """Unload all entity models."""
+        for model in self._entity_models.values():
+            ray.unload_model(model)
+
+        self._entity_models.clear()
 
     def _draw_3d_wall(
         self,
@@ -138,7 +177,7 @@ class Scene3DRendererMixin:
         grid: list[list[CellState]],
     ) -> None:
         """Draw one 3D wall block."""
-        asset_kind, rotation = get_wall_render_info(grid, grid_x, grid_y)
+        asset_kind = get_wall_asset_kind(grid, grid_x, grid_y)
 
         position = self._grid_to_world(
             float(grid_x),
@@ -146,13 +185,12 @@ class Scene3DRendererMixin:
             grid,
             self._wall_height_3d / 2.0,
         )
-        self._draw_3d_wall_shape(position, asset_kind, rotation)
+        self._draw_3d_wall_shape(position, asset_kind)
 
     def _draw_3d_wall_shape(
         self,
         position: Any,
         asset_kind: WallAssetKind,
-        rotation: float,
     ) -> None:
         """Draw one wall shape."""
         model = self._wall_models.get(asset_kind)
@@ -169,7 +207,7 @@ class Scene3DRendererMixin:
 
         model_position = ray.Vector3(
             position.x,
-            position.y + 0.01,
+            position.y,
             position.z,
         )
 
@@ -177,7 +215,7 @@ class Scene3DRendererMixin:
             model,
             model_position,
             ray.Vector3(0.0, 1.0, 0.0),
-            rotation,
+            0.0,
             ray.Vector3(
                 WALL_MODEL_SCALE,
                 WALL_MODEL_SCALE,
@@ -195,19 +233,39 @@ class Scene3DRendererMixin:
     ) -> None:
         """Draw one 3D pacgum or super pacgum."""
         if is_super:
-            radius = 0.23
-            color = SUPER_PACGUM_COLOR
-        else:
-            radius = 0.13
-            color = PACGUM_COLOR
+            self._draw_sphere_at(
+                float(grid_x),
+                float(grid_y),
+                grid,
+                0.23,
+                SUPER_PACGUM_COLOR,
+                self._wall_height_3d / 2,
+            )
+            return
 
-        self._draw_sphere_at(
+        model = self._entity_models.get("pacgum")
+        position = self._grid_to_world(
             float(grid_x),
             float(grid_y),
             grid,
-            radius,
-            color,
             self._wall_height_3d / 2,
+        )
+
+        if model is None:
+            ray.draw_sphere(position, 0.13, PACGUM_COLOR)
+            return
+
+        ray.draw_model_ex(
+            model,
+            position,
+            ray.Vector3(0.0, 1.0, 0.0),
+            0.0,
+            ray.Vector3(
+                PACGUM_MODEL_SCALE,
+                PACGUM_MODEL_SCALE,
+                PACGUM_MODEL_SCALE,
+            ),
+            ray.WHITE,
         )
 
     def _draw_3d_pacman(
@@ -216,13 +274,24 @@ class Scene3DRendererMixin:
         grid: list[list[CellState]],
     ) -> None:
         """Draw Pac-Man in 3D."""
-        self._draw_sphere_at(
-            pacman.x,
-            pacman.y,
-            grid,
-            0.35,
-            PACMAN_COLOR,
-            0.35,
+        model = self._entity_models.get("pacman")
+        position = self._grid_to_world(pacman.x, pacman.y, grid, 0.35)
+
+        if model is None:
+            ray.draw_sphere(position, 0.35, PACMAN_COLOR)
+            return
+
+        ray.draw_model_ex(
+            model,
+            position,
+            ray.Vector3(0.0, 1.0, 0.0),
+            self._direction_to_rotation(pacman.direction),
+            ray.Vector3(
+                PACMAN_MODEL_SCALE,
+                PACMAN_MODEL_SCALE,
+                PACMAN_MODEL_SCALE,
+            ),
+            ray.WHITE,
         )
 
     def _draw_3d_ghost(
@@ -231,14 +300,55 @@ class Scene3DRendererMixin:
         grid: list[list[CellState]],
     ) -> None:
         """Draw one ghost in 3D."""
-        self._draw_sphere_at(
-            ghost.x,
-            ghost.y,
-            grid,
-            0.35,
-            self._get_ghost_color(ghost),
-            0.35,
+        if ghost.state == GhostState.EATEN:
+            return
+
+        model_key = self._ghost_model_key(ghost)
+        model = self._entity_models.get(model_key)
+        position = self._grid_to_world(ghost.x, ghost.y, grid, 0.36)
+
+        if model is None:
+            ray.draw_sphere(position, 0.35, self._get_ghost_color(ghost))
+            return
+
+        ray.draw_model_ex(
+            model,
+            position,
+            ray.Vector3(0.0, 1.0, 0.0),
+            self._direction_to_rotation(ghost.direction),
+            ray.Vector3(
+                GHOST_MODEL_SCALE,
+                GHOST_MODEL_SCALE,
+                GHOST_MODEL_SCALE,
+            ),
+            ray.WHITE,
         )
+
+    def _ghost_model_key(self, ghost: GhostData) -> str:
+        """Return the model key for a ghost."""
+        if ghost.state in (GhostState.FRIGHTENED, GhostState.FLASHING):
+            return "ghost_cyan"
+
+        keys = {
+            GhostType.RED: "ghost_red",
+            GhostType.PINK: "ghost_pink",
+            GhostType.BLUE: "ghost_cyan",
+            GhostType.ORANGE: "ghost_orange",
+        }
+
+        return keys.get(ghost.type, "ghost_red")
+
+    def _direction_to_rotation(self, direction: Direction) -> float:
+        """Return model Y-axis rotation from entity direction."""
+        rotations = {
+            Direction.DOWN: 0.0,
+            Direction.RIGHT: 90.0,
+            Direction.UP: 180.0,
+            Direction.LEFT: 270.0,
+            Direction.NONE: 0.0,
+        }
+
+        return rotations.get(direction, 0.0)
 
     def _draw_sphere_at(
         self,

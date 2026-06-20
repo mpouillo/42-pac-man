@@ -10,6 +10,7 @@ class ConfigData(BaseModel):
     points_per_pacgum: int
     points_per_super_pacgum: int
     points_per_ghost: int
+    points_per_second_left: int
 
 
 def load_config(file_path: str) -> ConfigData:

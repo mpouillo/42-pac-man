@@ -1,5 +1,5 @@
 {
-    "highscores": "highscore.json",
+    "highscores": "highscores.json",
     "levels": [
         "assets/levels/level_1.json",
         "assets/levels/level_2.json",
@@ -8,5 +8,6 @@
     "lives": 3,
     "points_per_pacgum": 10,
     "points_per_super_pacgum": 50,
-    "points_per_ghost": 200
+    "points_per_ghost": 200,
+    "points_per_second_left": 100
 }

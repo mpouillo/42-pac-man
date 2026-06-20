@@ -10,7 +10,7 @@ class Pacman:
     def __init__(self, level: Level) -> None:
         self.x: float = level.data.pacman_spawn.x
         self.y: float = level.data.pacman_spawn.y
-        self.direction: Direction = Direction.LEFT
+        self.direction: Direction = Direction.NONE
         self.queued_direction: Direction = Direction.NONE
         self.alive: bool = True
 

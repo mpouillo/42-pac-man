@@ -1,5 +1,6 @@
 """3D maze, entity, asset, and HUD rendering."""
 
+import math
 from typing import Any
 
 import pyray as ray
@@ -30,8 +31,13 @@ from src.view.constants import (
     ENTITY_MODEL_EXTENSIONS,
     ENTITY_MODEL_FILES,
     GHOST_MODEL_SCALE,
+    GHOST_TILT_DEGREES,
+    GHOST_TILT_SPEED,
     PACGUM_MODEL_SCALE,
+    PACMAN_ANIMATION_FPS,
     PACMAN_MODEL_SCALE,
+    RESPAWN_GHOST_TILT_DEGREES,
+    RESPAWN_GHOST_TILT_SPEED,
 )
 from src.view.wall_shapes import (
     WallAssetKind,
@@ -274,7 +280,12 @@ class Scene3DRendererMixin:
         grid: list[list[CellState]],
     ) -> None:
         """Draw Pac-Man in 3D."""
-        model = self._entity_models.get("pacman")
+        model_key = self._pacman_model_key(pacman.direction)
+        model = self._entity_models.get(model_key)
+
+        if model is None:
+            model = self._entity_models.get("pacman")
+
         position = self._grid_to_world(pacman.x, pacman.y, grid, 0.35)
 
         if model is None:
@@ -294,28 +305,45 @@ class Scene3DRendererMixin:
             ray.WHITE,
         )
 
+    def _pacman_model_key(self, direction: Direction) -> str:
+        """Return animated Pac-Man model key."""
+        if direction == Direction.NONE:
+            return "pacman_closed"
+
+        frames = (
+            "pacman_closed",
+            "pacman_half",
+            "pacman_open",
+            "pacman_half",
+        )
+
+        frame_index = int(ray.get_time() * PACMAN_ANIMATION_FPS) % len(frames)
+        return frames[frame_index]
+
     def _draw_3d_ghost(
         self,
         ghost: GhostData,
         grid: list[list[CellState]],
     ) -> None:
         """Draw one ghost in 3D."""
-        if ghost.state == GhostState.EATEN:
-            return
-
         model_key = self._ghost_model_key(ghost)
         model = self._entity_models.get(model_key)
         position = self._grid_to_world(ghost.x, ghost.y, grid, 0.36)
 
         if model is None:
+            if ghost.state == GhostState.EATEN:
+                return
+
             ray.draw_sphere(position, 0.35, self._get_ghost_color(ghost))
             return
+
+        rotation_axis, rotation_angle = self._ghost_rotation(ghost)
 
         ray.draw_model_ex(
             model,
             position,
-            ray.Vector3(0.0, 1.0, 0.0),
-            self._direction_to_rotation(ghost.direction),
+            rotation_axis,
+            rotation_angle,
             ray.Vector3(
                 GHOST_MODEL_SCALE,
                 GHOST_MODEL_SCALE,
@@ -326,6 +354,9 @@ class Scene3DRendererMixin:
 
     def _ghost_model_key(self, ghost: GhostData) -> str:
         """Return the model key for a ghost."""
+        if ghost.state == GhostState.EATEN:
+            return "ghost_respawn"
+
         if ghost.state in (GhostState.FRIGHTENED, GhostState.FLASHING):
             return "ghost_cyan"
 
@@ -337,6 +368,117 @@ class Scene3DRendererMixin:
         }
 
         return keys.get(ghost.type, "ghost_red")
+
+    def _ghost_rotation(self, ghost: GhostData) -> tuple[Any, float]:
+        """Return one axis-angle rotation combining facing and runtime tilt."""
+        facing_angle = self._direction_to_rotation(ghost.direction)
+
+        if ghost.state == GhostState.EATEN:
+            tilt_angle = self._respawn_ghost_tilt(ghost)
+        else:
+            tilt_angle = self._ghost_tilt(ghost)
+
+        return self._combined_yaw_roll_rotation(facing_angle, tilt_angle)
+
+
+    def _ghost_tilt(self, ghost: GhostData) -> float:
+        """Return smooth left/right tilt for a normal ghost."""
+        return (
+            math.sin(ray.get_time() * GHOST_TILT_SPEED + self._ghost_phase(ghost))
+            * GHOST_TILT_DEGREES
+        )
+
+
+    def _respawn_ghost_tilt(self, ghost: GhostData) -> float:
+        """Return a quicker tilt for the dashed respawn ghost."""
+        return (
+            math.sin(
+                ray.get_time() * RESPAWN_GHOST_TILT_SPEED
+                + self._ghost_phase(ghost)
+            )
+            * RESPAWN_GHOST_TILT_DEGREES
+        )
+
+
+    def _ghost_phase(self, ghost: GhostData) -> float:
+        """Return animation offset so ghosts do not sway together."""
+        phases = {
+            GhostType.RED: 0.0,
+            GhostType.PINK: 0.7,
+            GhostType.BLUE: 1.4,
+            GhostType.ORANGE: 2.1,
+        }
+
+        return phases.get(ghost.type, 0.0)
+
+
+    def _combined_yaw_roll_rotation(
+        self,
+        yaw_degrees: float,
+        roll_degrees: float,
+    ) -> tuple[Any, float]:
+        """Combine direction yaw and local sideways tilt into one axis-angle."""
+        yaw = math.radians(yaw_degrees) / 2.0
+        roll = math.radians(roll_degrees) / 2.0
+
+        yaw_quaternion = (math.cos(yaw), 0.0, math.sin(yaw), 0.0)
+        roll_quaternion = (math.cos(roll), 0.0, 0.0, math.sin(roll))
+
+        w, x, y, z = self._multiply_quaternions(
+            yaw_quaternion,
+            roll_quaternion,
+        )
+
+        length = math.sqrt(w * w + x * x + y * y + z * z)
+        if length == 0.0:
+            return ray.Vector3(0.0, 1.0, 0.0), 0.0
+
+        w /= length
+        x /= length
+        y /= length
+        z /= length
+
+        w = max(-1.0, min(1.0, w))
+        angle = math.degrees(2.0 * math.acos(w))
+        axis_scale = math.sqrt(max(0.0, 1.0 - w * w))
+
+        if axis_scale < 0.0001:
+            return ray.Vector3(0.0, 1.0, 0.0), 0.0
+
+        return ray.Vector3(
+            x / axis_scale,
+            y / axis_scale,
+            z / axis_scale,
+        ), angle
+
+
+    def _multiply_quaternions(
+        self,
+        first: tuple[float, float, float, float],
+        second: tuple[float, float, float, float],
+    ) -> tuple[float, float, float, float]:
+        """Return first * second for quaternions stored as w, x, y, z."""
+        first_w, first_x, first_y, first_z = first
+        second_w, second_x, second_y, second_z = second
+
+        return (
+            first_w * second_w
+            - first_x * second_x
+            - first_y * second_y
+            - first_z * second_z,
+            first_w * second_x
+            + first_x * second_w
+            + first_y * second_z
+            - first_z * second_y,
+            first_w * second_y
+            - first_x * second_z
+            + first_y * second_w
+            + first_z * second_x,
+            first_w * second_z
+            + first_x * second_y
+            - first_y * second_x
+            + first_z * second_w,
+        )
 
     def _direction_to_rotation(self, direction: Direction) -> float:
         """Return model Y-axis rotation from entity direction."""

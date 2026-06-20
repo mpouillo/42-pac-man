@@ -46,13 +46,27 @@ ENTITY_MODEL_EXTENSIONS = (".glb", ".obj", ".gltf")
 
 ENTITY_MODEL_FILES = {
     "pacgum": "pacgum",
+
     "pacman": "pacman",
+    "pacman_closed": "pacman_closed",
+    "pacman_half": "pacman_half",
+    "pacman_open": "pacman_open",
+
     "ghost_red": "ghost_red",
     "ghost_pink": "ghost_pink",
     "ghost_cyan": "ghost_cyan",
     "ghost_orange": "ghost_orange",
+    "ghost_respawn": "ghost_respawn",
 }
 
 PACGUM_MODEL_SCALE = 1.0
 PACMAN_MODEL_SCALE = 1.0
 GHOST_MODEL_SCALE = 1.0
+
+PACMAN_ANIMATION_FPS = 9.0
+
+GHOST_TILT_SPEED = 4.5
+GHOST_TILT_DEGREES = 4.0
+
+RESPAWN_GHOST_TILT_SPEED = 8.0
+RESPAWN_GHOST_TILT_DEGREES = 7.0

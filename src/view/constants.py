@@ -35,12 +35,24 @@ FOV_SPEED = 60.0
 
 WALL_MODEL_DIR = Path(__file__).resolve().parents[2] / "assets" / "walls"
 WALL_MODEL_FILES = {
-    WallAssetKind.ISOLATED: "wall_isolated",
-    WallAssetKind.END: "wall_end",
-    WallAssetKind.STRAIGHT: "wall_straight",
-    WallAssetKind.CORNER: "wall_corner",
-    WallAssetKind.T_JUNCTION: "wall_t_junction",
-    WallAssetKind.CROSS: "wall_cross",
+    asset_kind: f"wall_{asset_kind.value}"
+    for asset_kind in WallAssetKind
 }
 WALL_MODEL_EXTENSIONS = (".glb", ".obj", ".gltf")
 WALL_MODEL_SCALE = 1.0
+
+ENTITY_MODEL_DIR = Path(__file__).resolve().parents[2] / "assets" / "entities"
+ENTITY_MODEL_EXTENSIONS = (".glb", ".obj", ".gltf")
+
+ENTITY_MODEL_FILES = {
+    "pacgum": "pacgum",
+    "pacman": "pacman",
+    "ghost_red": "ghost_red",
+    "ghost_pink": "ghost_pink",
+    "ghost_cyan": "ghost_cyan",
+    "ghost_orange": "ghost_orange",
+}
+
+PACGUM_MODEL_SCALE = 1.0
+PACMAN_MODEL_SCALE = 1.0
+GHOST_MODEL_SCALE = 1.0

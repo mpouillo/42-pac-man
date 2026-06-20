@@ -1,4 +1,4 @@
-"""Wall shape detection and model rotation mappings."""
+"""Wall shape detection and model asset mappings."""
 
 from enum import Enum
 
@@ -12,36 +12,48 @@ WALL_LEFT = 8
 
 
 class WallAssetKind(Enum):
-    """Base wall asset type before rotation."""
+    """Wall asset type with final direction already included."""
 
     ISOLATED = "isolated"
-    END = "end"
-    STRAIGHT = "straight"
-    CORNER = "corner"
-    T_JUNCTION = "t_junction"
+
+    END_UP = "end_up"
+    END_RIGHT = "end_right"
+    END_DOWN = "end_down"
+    END_LEFT = "end_left"
+
+    STRAIGHT_VERTICAL = "straight_vertical"
+    STRAIGHT_HORIZONTAL = "straight_horizontal"
+
+    CORNER_UP_RIGHT = "corner_up_right"
+    CORNER_RIGHT_DOWN = "corner_right_down"
+    CORNER_DOWN_LEFT = "corner_down_left"
+    CORNER_LEFT_UP = "corner_left_up"
+
+    T_UP_RIGHT_DOWN = "t_up_right_down"
+    T_RIGHT_DOWN_LEFT = "t_right_down_left"
+    T_DOWN_LEFT_UP = "t_down_left_up"
+    T_LEFT_UP_RIGHT = "t_left_up_right"
+
     CROSS = "cross"
 
 
-WALL_RENDER_INFO = {
-    0: (WallAssetKind.ISOLATED, 0.0),
-    WALL_UP: (WallAssetKind.END, 0.0),
-    WALL_RIGHT: (WallAssetKind.END, 270.0),
-    WALL_DOWN: (WallAssetKind.END, 180.0),
-    WALL_LEFT: (WallAssetKind.END, 90.0),
-    WALL_UP | WALL_DOWN: (WallAssetKind.STRAIGHT, 0.0),
-    WALL_LEFT | WALL_RIGHT: (WallAssetKind.STRAIGHT, 90.0),
-    WALL_UP | WALL_RIGHT: (WallAssetKind.CORNER, 0.0),
-    WALL_DOWN | WALL_RIGHT: (WallAssetKind.CORNER, 270.0),
-    WALL_DOWN | WALL_LEFT: (WallAssetKind.CORNER, 180.0),
-    WALL_UP | WALL_LEFT: (WallAssetKind.CORNER, 90.0),
-    WALL_UP | WALL_LEFT | WALL_RIGHT: (WallAssetKind.T_JUNCTION, 0.0),
-    WALL_UP | WALL_DOWN | WALL_RIGHT: (WallAssetKind.T_JUNCTION, 270.0),
-    WALL_DOWN | WALL_LEFT | WALL_RIGHT: (WallAssetKind.T_JUNCTION, 180.0),
-    WALL_UP | WALL_DOWN | WALL_LEFT: (WallAssetKind.T_JUNCTION, 90.0),
-    WALL_UP | WALL_RIGHT | WALL_DOWN | WALL_LEFT: (
-        WallAssetKind.CROSS,
-        0.0,
-    ),
+WALL_ASSET_BY_MASK = {
+    0: WallAssetKind.ISOLATED,
+    WALL_UP: WallAssetKind.END_UP,
+    WALL_RIGHT: WallAssetKind.END_RIGHT,
+    WALL_DOWN: WallAssetKind.END_DOWN,
+    WALL_LEFT: WallAssetKind.END_LEFT,
+    WALL_UP | WALL_DOWN: WallAssetKind.STRAIGHT_VERTICAL,
+    WALL_LEFT | WALL_RIGHT: WallAssetKind.STRAIGHT_HORIZONTAL,
+    WALL_UP | WALL_RIGHT: WallAssetKind.CORNER_UP_RIGHT,
+    WALL_RIGHT | WALL_DOWN: WallAssetKind.CORNER_RIGHT_DOWN,
+    WALL_DOWN | WALL_LEFT: WallAssetKind.CORNER_DOWN_LEFT,
+    WALL_LEFT | WALL_UP: WallAssetKind.CORNER_LEFT_UP,
+    WALL_UP | WALL_RIGHT | WALL_DOWN: WallAssetKind.T_UP_RIGHT_DOWN,
+    WALL_RIGHT | WALL_DOWN | WALL_LEFT: WallAssetKind.T_RIGHT_DOWN_LEFT,
+    WALL_DOWN | WALL_LEFT | WALL_UP: WallAssetKind.T_DOWN_LEFT_UP,
+    WALL_LEFT | WALL_UP | WALL_RIGHT: WallAssetKind.T_LEFT_UP_RIGHT,
+    WALL_UP | WALL_RIGHT | WALL_DOWN | WALL_LEFT: WallAssetKind.CROSS,
 }
 
 
@@ -79,11 +91,11 @@ def get_wall_mask(
     return mask
 
 
-def get_wall_render_info(
+def get_wall_asset_kind(
     grid: list[list[CellState]],
     x: int,
     y: int,
-) -> tuple[WallAssetKind, float]:
-    """Return the wall asset and rotation for neighboring walls."""
+) -> WallAssetKind:
+    """Return the wall asset matching neighboring walls."""
     mask = get_wall_mask(grid, x, y)
-    return WALL_RENDER_INFO[mask]
+    return WALL_ASSET_BY_MASK[mask]

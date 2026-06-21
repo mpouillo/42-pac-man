@@ -49,7 +49,6 @@ class Ghost:
 
     def chase(self) -> None:
         """Change the ghost behavior state to actively hunt Pac-Man."""
-        print(self.type, "is chasing")
         self.state = GhostState.CHASE
         self._speed = self._base_speed * 1.5
         self._timer = 20.0
@@ -57,7 +56,6 @@ class Ghost:
 
     def scatter(self) -> None:
         """Change the ghost behavior state to target its home corner corner."""
-        print(self.type, "is scattering")
         self.state = GhostState.SCATTER
         self._speed = self._base_speed * 1.5
         self._timer = 5.0
@@ -65,7 +63,6 @@ class Ghost:
 
     def frighten(self, duration: float, pacman: PacmanData) -> None:
         """Frighten the ghost and direct them away from Pac-Man."""
-        print(self.type, "is frightened")
         self.state = GhostState.FRIGHTENED
         self._speed = self._base_speed
         self._timer = duration
@@ -79,7 +76,6 @@ class Ghost:
 
     def die(self) -> None:
         """Kill the ghost and initiate its recovery return to spawn."""
-        print(self.type, "is eaten")
         self.state = GhostState.EATEN
         self._speed = self._base_speed * 2
         self._timer = 0.0

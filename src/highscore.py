@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field, TypeAdapter
 class HighscoreEntry(BaseModel):
     """Represent a single validated player highscore record."""
 
-    name: str = Field(..., min_length=1)
+    name: str = Field(..., min_length=1, max_length=10)
     score: int = Field(..., ge=0)
 
 

@@ -33,6 +33,7 @@ class Entity3DRendererMixin:
     """Load and draw gameplay entity models."""
 
     _entity_models: dict[str, Any]
+    _last_pacman_direction: Direction
     _grid_to_world: Callable[
         [float, float, list[list[CellState]], float],
         Any,
@@ -95,27 +96,42 @@ class Entity3DRendererMixin:
         grid: list[list[CellState]],
     ) -> None:
         """Draw Pac-Man in 3D."""
-        model = self._entity_models["pacman"]
-
         position = self._grid_to_world(
             pacman.x,
             pacman.y,
             grid,
             PACMAN_MODEL_HEIGHT,
         )
+        direction = self._pacman_display_direction(pacman.direction)
 
+        self._draw_pacman_model(position, direction, PACMAN_MODEL_SCALE)
+
+    def _draw_pacman_model(
+        self,
+        position: Any,
+        direction: Direction,
+        scale: float,
+    ) -> None:
+        """Draw the Pac-Man model with the shared orientation rules."""
         ray.draw_model_ex(
-            model,
+            self._entity_models["pacman"],
             position,
             ray.Vector3(0.0, 1.0, 0.0),
-            self._direction_to_rotation(pacman.direction),
+            self._direction_to_rotation(direction),
             ray.Vector3(
-                PACMAN_MODEL_SCALE,
-                PACMAN_MODEL_SCALE,
-                PACMAN_MODEL_SCALE,
+                scale,
+                scale,
+                scale,
             ),
             ray.WHITE,
         )
+
+    def _pacman_display_direction(self, direction: Direction) -> Direction:
+        """Keep Pac-Man facing the last movement direction when stopped."""
+        if direction != Direction.NONE:
+            self._last_pacman_direction = direction
+
+        return self._last_pacman_direction
 
     def _draw_3d_ghost(
         self,

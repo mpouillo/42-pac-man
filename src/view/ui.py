@@ -16,7 +16,7 @@ from src.constants import (
     TEXT_PAGE_START_Y_RATIO,
     WINDOW_TITLE,
 )
-from src.types.enums import GamePhase
+from src.types.enums import Direction, GamePhase
 from src.types.protocols import ModelProtocol
 from src.view.menus import MenuRendererMixin
 from src.view.pages import PageRendererMixin
@@ -82,6 +82,7 @@ class GameView(
         self._auto_fov_enabled = True
         self._wall_models: dict[WallAssetKind, tuple[Any, Any]] = {}
         self._entity_models: dict[str, Any] = {}
+        self._last_pacman_direction = Direction.DOWN
 
         self._camera: Any = ray.Camera3D(
             ray.Vector3(*CAMERA_POSITION),

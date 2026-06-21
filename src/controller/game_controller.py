@@ -1,5 +1,6 @@
 """Main game controller."""
 
+from collections.abc import Sequence
 from contextlib import redirect_stdout
 
 import pyray as ray
@@ -8,9 +9,6 @@ from src.config import ConfigData
 from src.constants import (
     END_SCREEN_DISPLAY_SECONDS,
     MAIN_MENU_OPTIONS,
-    MENU_ITEM_HEIGHT,
-    MENU_ITEM_SPACING,
-    PAUSE_MENU_OPTION_TEMPLATES,
     PLAYER_NAME_MAX_LENGTH,
     TARGET_FPS,
     WINDOW_HEIGHT,
@@ -19,6 +17,7 @@ from src.constants import (
 from src.controller.input import InputState, collect_input
 from src.model.game_model import GameModel
 from src.types.enums import CheatType, Direction, GamePhase
+from src.view.menus import pause_menu_options
 from src.view.ui import GameView, ViewState
 
 
@@ -111,7 +110,7 @@ class GameController:
         self._main_menu_index, mouse_confirmed = self._update_menu_mouse(
             input_state,
             self._main_menu_index,
-            len(MAIN_MENU_OPTIONS),
+            MAIN_MENU_OPTIONS,
         )
 
         if not input_state.confirm and not mouse_confirmed:
@@ -135,7 +134,7 @@ class GameController:
         self,
         input_state: InputState,
         selected_index: int,
-        size: int,
+        options: Sequence[str],
     ) -> tuple[int, bool]:
         """Return the mouse-selected menu index and confirmation state."""
         current_position = (input_state.mouse_x, input_state.mouse_y)
@@ -150,31 +149,16 @@ class GameController:
         if not mouse_moved and not input_state.mouse_left_pressed:
             return selected_index, False
 
-        index = self._menu_index_from_mouse(
+        index = self._view.get_menu_index_at_position(
+            input_state.mouse_x,
             input_state.mouse_y,
-            size,
+            options,
         )
 
         if index is None:
             return selected_index, False
 
         return index, bool(input_state.mouse_left_pressed)
-
-    def _menu_index_from_mouse(
-        self,
-        mouse_y: int,
-        size: int,
-    ) -> int | None:
-        """Return hovered menu index from its vertical position."""
-        start_y = self._view.get_menu_start_y()
-        index = (mouse_y - start_y) // MENU_ITEM_SPACING
-
-        if 0 <= index < size:
-            item_y = start_y + index * MENU_ITEM_SPACING
-            if item_y <= mouse_y <= item_y + MENU_ITEM_HEIGHT:
-                return index
-
-        return None
 
     def _move_menu_index(
         self,
@@ -245,15 +229,20 @@ class GameController:
 
     def _update_paused(self, input_state: InputState) -> None:
         """Handle pause menu input."""
+        pause_options = pause_menu_options(
+            self._cheat_states[CheatType.INVINCIBILITY],
+            self._cheat_states[CheatType.GHOST_FREEZE],
+            self._cheat_states[CheatType.SPEED_BOOST],
+        )
         self._pause_menu_index = self._move_menu_index(
             self._pause_menu_index,
-            len(PAUSE_MENU_OPTION_TEMPLATES),
+            len(pause_options),
             input_state,
         )
         self._pause_menu_index, mouse_confirmed = self._update_menu_mouse(
             input_state,
             self._pause_menu_index,
-            len(PAUSE_MENU_OPTION_TEMPLATES),
+            pause_options,
         )
 
         if input_state.escape:

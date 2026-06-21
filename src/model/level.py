@@ -1,5 +1,7 @@
 from pathlib import Path
-from typing import Any, Dict, List, cast
+import random
+import sys
+from typing import Any, Dict, List
 
 from mazegenerator import MazeGenerator
 from pydantic import BaseModel, field_validator
@@ -112,9 +114,14 @@ class Level:
 
     def _load_grid(self) -> List[List[CellState]]:
         """Construct and populate a clean map grid using the generator."""
+        if self.data.seed is None:
+            seed = random.randint(0, sys.maxsize)
+        else:
+            seed = self.data.seed
+
         gen = MazeGenerator(
             size=(self.data.size_x, self.data.size_y),
-            seed=cast(int, self.data.seed)
+            seed=seed
         )
         grid = self._convert_maze_to_grid(gen.maze)
         grid = self._setup_entities(grid, self.data)

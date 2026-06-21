@@ -3,14 +3,10 @@ from pathlib import Path
 
 import pyray as ray
 
-# Path
-PROJECT_ROOT = Path(__file__).resolve().parent
-ASSETS_DIR = PROJECT_ROOT / "assets"
-LEVELS_DIR = ASSETS_DIR / "levels"
-CONFIG_FILE_PATH = PROJECT_ROOT / "config.json"
+# Paths
+ASSETS_DIR = Path(__file__).resolve().parents[1] / "assets"
 
 # Game data
-STARTING_LIVES: int = 3
 PACMAN_SPEED: float = 2.0
 SPEED_BOOST_CHEAT: float = 2.0
 GHOST_FLASH_THRESHOLD: float = 4.0
@@ -41,52 +37,26 @@ TEXT_PAGE_BODY_TOP_OFFSET = 100
 TEXT_PAGE_BODY_LINE_SPACING = 40
 TEXT_PAGE_FOOTER_BOTTOM_OFFSET = 90
 
-# Shared page titles and footer copy
-MAIN_MENU_TITLE = "Pac-Man"
-PAUSE_MENU_TITLE = "Paused"
+# Shared page copy
 HIGHSCORES_TITLE = "Highscores"
-INSTRUCTIONS_TITLE = "Instructions"
-GAME_OVER_TITLE = "GAME OVER"
-WIN_TITLE = "YOU WIN!"
 TEXT_PAGE_RETURN_FOOTER = "Press Enter or Escape to return"
-MAIN_MENU_FOOTER = "Enter/click: select"
-PAUSE_MENU_FOOTER = "Escape: resume   Enter: select"
-SCORE_ENTRY_SAVE_FOOTER = "Enter: save score"
-SCORE_ENTRY_SAVED_FOOTER = "Score saved. Press Enter or Escape to return"
 
-# Shared menu content and action keys
-MAIN_MENU_ACTION_START_GAME = "start_game"
-MAIN_MENU_ACTION_HIGHSCORES = "highscores"
-MAIN_MENU_ACTION_INSTRUCTIONS = "instructions"
-MAIN_MENU_ACTION_EXIT = "exit"
-PAUSE_MENU_ACTION_RESUME = "resume"
-PAUSE_MENU_ACTION_INVINCIBILITY = "invincibility"
-PAUSE_MENU_ACTION_GHOST_FREEZE = "ghost_freeze"
-PAUSE_MENU_ACTION_SPEED_BOOST = "speed_boost"
-PAUSE_MENU_ACTION_LEVEL_SKIP = "level_skip"
-PAUSE_MENU_ACTION_MAIN_MENU = "main_menu"
-MAIN_MENU_ITEMS = (
-    ("Start Game", MAIN_MENU_ACTION_START_GAME),
-    ("Highscores", MAIN_MENU_ACTION_HIGHSCORES),
-    ("Instructions", MAIN_MENU_ACTION_INSTRUCTIONS),
-    ("Exit", MAIN_MENU_ACTION_EXIT),
+# Shared menu content
+MAIN_MENU_OPTIONS = (
+    "Start Game",
+    "Highscores",
+    "Instructions",
+    "Exit",
 )
-MAIN_MENU_OPTIONS = tuple(label for label, _action in MAIN_MENU_ITEMS)
-MAIN_MENU_ACTIONS = tuple(action for _label, action in MAIN_MENU_ITEMS)
-PAUSE_MENU_ITEMS = (
-    ("Resume", PAUSE_MENU_ACTION_RESUME),
-    ("Invincibility: {invincibility}", PAUSE_MENU_ACTION_INVINCIBILITY),
-    ("Ghost Freeze: {ghost_freeze}", PAUSE_MENU_ACTION_GHOST_FREEZE),
-    ("Speed Boost: {speed_boost}", PAUSE_MENU_ACTION_SPEED_BOOST),
-    ("Level Skip", PAUSE_MENU_ACTION_LEVEL_SKIP),
-    ("Return to Main Menu", PAUSE_MENU_ACTION_MAIN_MENU),
+PAUSE_MENU_OPTION_TEMPLATES = (
+    "Resume",
+    "Invincibility: {invincibility}",
+    "Ghost Freeze: {ghost_freeze}",
+    "Speed Boost: {speed_boost}",
+    "Level Skip",
+    "Return to Main Menu",
 )
-PAUSE_MENU_OPTION_TEMPLATES = tuple(
-    label for label, _action in PAUSE_MENU_ITEMS
-)
-PAUSE_MENU_ACTIONS = tuple(action for _label, action in PAUSE_MENU_ITEMS)
 MENU_ITEM_SPACING = 55
-MENU_ITEM_HEIGHT = TEXT_PAGE_BODY_FONT_SIZE
 MENU_MARKER_SIZE = TEXT_PAGE_BODY_FONT_SIZE
 MENU_MARKER_GAP = 14
 MENU_MARKER_FLOAT_DISTANCE = 8.0
@@ -131,15 +101,14 @@ CAMERA_TARGET = (0.0, 0.0, 0.0)
 CAMERA_UP = (0.0, 1.0, 0.0)
 
 # Wall
-WALL_MODEL_DIR = Path(__file__).resolve().parents[1] / "assets" / "walls"
+WALL_MODEL_DIR = ASSETS_DIR / "walls"
 WALL_MODEL_FILE_PREFIX = "wall_"
-WALL_MODEL_EXTENSION = ".glb"
 WALL_MODEL_THICKNESS_SCALE = 1.0
 WALL_MODEL_HEIGHT_SCALE = 0.6
 
 # Entity assets
-ENTITY_MODEL_DIR = Path(__file__).resolve().parents[1] / "assets" / "entities"
-ENTITY_MODEL_EXTENSION = ".glb"
+ENTITY_MODEL_DIR = ASSETS_DIR / "entities"
+MODEL_EXTENSION = ".glb"
 ENTITY_MODEL_FILES = {
     "pacman": "pacman",
     "pacgum": "pacgum",

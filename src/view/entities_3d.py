@@ -1,45 +1,49 @@
 """Pac-Man, pacgum, and ghost rendering for the 3D scene."""
+# mypy: disable-error-code=attr-defined
 
-from collections.abc import Callable
-from pathlib import Path
+import math
 from typing import Any
 
 import pyray as ray
 
 from src.constants import (
     ENTITY_MODEL_DIR,
-    ENTITY_MODEL_EXTENSION,
     ENTITY_MODEL_FILES,
     ENTITY_SWAY_DEGREES,
     ENTITY_SWAY_SPEED,
     GHOST_MODEL_HEIGHT,
     GHOST_MODEL_SCALE,
+    MODEL_EXTENSION,
     PACGUM_MODEL_SCALE,
     PACMAN_MODEL_HEIGHT,
     PACMAN_MODEL_SCALE,
 )
 from src.types.dataclasses import GhostData
 from src.types.enums import CellState, Direction, GhostState, GhostType
-from src.view.entity_orientation import yaw_sway_rotation
 
+DIRECTION_ROTATIONS = {
+    Direction.DOWN: 0.0,
+    Direction.NONE: 0.0,
+    Direction.RIGHT: 90.0,
+    Direction.UP: 180.0,
+    Direction.LEFT: 270.0,
+}
 GHOST_VISUAL_OFFSETS = {
     GhostType.RED: (0.15, -0.08),
     GhostType.PINK: (0.05, 0.08),
     GhostType.BLUE: (-0.05, -0.08),
     GhostType.ORANGE: (-0.15, 0.08),
 }
+GHOST_MODEL_KEYS = {
+    GhostType.RED: "ghost_red",
+    GhostType.PINK: "ghost_pink",
+    GhostType.BLUE: "ghost_cyan",
+    GhostType.ORANGE: "ghost_orange",
+}
 
 
 class Entity3DRendererMixin:
     """Load and draw gameplay entity models."""
-
-    _entity_models: dict[str, Any]
-    _last_pacman_direction: Direction
-    _grid_to_world: Callable[
-        [float, float, list[list[CellState]], float],
-        Any,
-    ]
-    _load_model_asset: Callable[[Path, str, str], Any]
 
     def _load_entity_models(self) -> None:
         """Load Pac-Man, pacgum, and ghost models once."""
@@ -49,7 +53,7 @@ class Entity3DRendererMixin:
             model = self._load_model_asset(
                 ENTITY_MODEL_DIR,
                 base_name,
-                ENTITY_MODEL_EXTENSION,
+                MODEL_EXTENSION,
             )
             self._entity_models[model_key] = model
 
@@ -104,16 +108,6 @@ class Entity3DRendererMixin:
             PACMAN_MODEL_HEIGHT,
         )
         direction = self._pacman_display_direction(pacman.direction)
-
-        self._draw_pacman_model(position, direction, PACMAN_MODEL_SCALE)
-
-    def _draw_pacman_model(
-        self,
-        position: Any,
-        direction: Direction,
-        scale: float,
-    ) -> None:
-        """Draw the Pac-Man model with the shared orientation rules."""
         rotation_axis, rotation_angle = self._entity_rotation(direction)
 
         ray.draw_model_ex(
@@ -122,9 +116,9 @@ class Entity3DRendererMixin:
             rotation_axis,
             rotation_angle,
             ray.Vector3(
-                scale,
-                scale,
-                scale,
+                PACMAN_MODEL_SCALE,
+                PACMAN_MODEL_SCALE,
+                PACMAN_MODEL_SCALE,
             ),
             ray.WHITE,
         )
@@ -150,11 +144,11 @@ class Entity3DRendererMixin:
             grid,
             GHOST_MODEL_HEIGHT,
         )
-        offset_x, offset_z = self._ghost_visual_offset(ghost.type)
+        offset_x, offset_z = GHOST_VISUAL_OFFSETS[ghost.type]
         position.x += offset_x
         position.z += offset_z
 
-        rotation_axis, rotation_angle = self._ghost_rotation(ghost)
+        rotation_axis, rotation_angle = self._entity_rotation(ghost.direction)
 
         ray.draw_model_ex(
             model,
@@ -177,36 +171,16 @@ class Entity3DRendererMixin:
         if ghost.state in (GhostState.FRIGHTENED, GhostState.FLASHING):
             return "ghost_frightened"
 
-        match ghost.type:
-            case GhostType.RED:
-                return "ghost_red"
-            case GhostType.PINK:
-                return "ghost_pink"
-            case GhostType.BLUE:
-                return "ghost_cyan"
-            case GhostType.ORANGE:
-                return "ghost_orange"
-        raise ValueError(f"Unsupported ghost type: {ghost.type}")
-
-    def _ghost_visual_offset(
-        self,
-        ghost_type: GhostType,
-    ) -> tuple[float, float]:
-        """Return a small fixed render offset to prevent ghost overlap."""
-        return GHOST_VISUAL_OFFSETS[ghost_type]
-
-    def _ghost_rotation(self, ghost: GhostData) -> tuple[Any, float]:
-        """Return one axis-angle rotation for a swaying ghost."""
-        return self._entity_rotation(ghost.direction)
+        return GHOST_MODEL_KEYS[ghost.type]
 
     def _entity_rotation(self, direction: Direction) -> tuple[Any, float]:
         """Return shared facing plus left/right turn sway for entities."""
+        base_angle = DIRECTION_ROTATIONS.get(direction, 0.0)
+        sway = (
+            math.sin(ray.get_time() * ENTITY_SWAY_SPEED)
+            * ENTITY_SWAY_DEGREES
+        )
         return (
             ray.Vector3(0.0, 1.0, 0.0),
-            yaw_sway_rotation(
-                direction,
-                ray.get_time(),
-                ENTITY_SWAY_SPEED,
-                ENTITY_SWAY_DEGREES,
-            ),
+            base_angle + sway,
         )

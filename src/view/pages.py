@@ -1,8 +1,9 @@
 """Highscore, instructions, and end-game page rendering."""
+# mypy: disable-error-code="attr-defined,no-untyped-def"
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Callable
+from typing import Any
 
 import pyray as ray
 
@@ -10,6 +11,8 @@ from src.constants import (
     ERROR_TEXT_COLOR,
     HIGHSCORE_DISPLAY_LIMIT,
     HIGHSCORE_QUERY_LIMIT,
+    HIGHSCORES_TITLE,
+    INSTRUCTION_LINES,
     MUTED_TEXT_COLOR,
     SCORE_ENTRY_CURRENT_SCORE_SCALE,
     SCORE_ENTRY_CURSOR_BLINK_SECONDS,
@@ -22,23 +25,19 @@ from src.constants import (
     TEXT_PAGE_BODY_LINE_SPACING,
     TEXT_PAGE_BODY_TOP_OFFSET,
     TEXT_PAGE_FOOTER_BOTTOM_OFFSET,
+    TEXT_PAGE_RETURN_FOOTER,
     TEXT_PAGE_TITLE_FONT_SIZE,
 )
 from src.types.protocols import ModelProtocol
 
-if TYPE_CHECKING:
-    from src.view.ui import ViewState
 
-ScoreEntryLine = tuple[str, bool]
+def _format_score_line(rank: int, name: str, score: int) -> str:
+    """Return one consistently formatted highscore line."""
+    return f"{rank}. {name} - {score} pts"
 
 
 class PageRendererMixin:
     """Draw non-3D information and end-game pages."""
-
-    _window_width: int
-    _window_height: int
-    _draw_centered_text: Callable[[str, int, int, Any], None]
-    _info_page_start_y: Callable[[], int]
 
     def _draw_highscores(self, model: ModelProtocol) -> None:
         """Draw highscore screen."""
@@ -46,7 +45,7 @@ class PageRendererMixin:
         start_y = self._info_page_start_y()
 
         self._draw_centered_text(
-            "Highscores",
+            HIGHSCORES_TITLE,
             start_y,
             TEXT_PAGE_TITLE_FONT_SIZE,
             SELECTED_COLOR,
@@ -61,9 +60,12 @@ class PageRendererMixin:
             )
         else:
             for index, entry in enumerate(scores):
-                text = f"{index + 1}. {entry.name} - {entry.score} pts"
                 self._draw_centered_text(
-                    text,
+                    _format_score_line(
+                        index + 1,
+                        entry.name,
+                        entry.score,
+                    ),
                     start_y
                     + TEXT_PAGE_BODY_TOP_OFFSET
                     + index * TEXT_PAGE_BODY_LINE_SPACING,
@@ -72,7 +74,7 @@ class PageRendererMixin:
                 )
 
         self._draw_centered_text(
-            "Press Enter or Escape to return",
+            TEXT_PAGE_RETURN_FOOTER,
             self._window_height - TEXT_PAGE_FOOTER_BOTTOM_OFFSET,
             TEXT_PAGE_BODY_FONT_SIZE,
             MUTED_TEXT_COLOR,
@@ -81,13 +83,13 @@ class PageRendererMixin:
     def _draw_score_entry_page(
         self,
         model: ModelProtocol,
-        state: ViewState,
+        state,
     ) -> None:
         """Draw highscore preview and username input after the game ends."""
         start_y = self._info_page_start_y()
 
         self._draw_centered_text(
-            "Highscores",
+            HIGHSCORES_TITLE,
             start_y,
             TEXT_PAGE_TITLE_FONT_SIZE,
             SELECTED_COLOR,
@@ -96,21 +98,36 @@ class PageRendererMixin:
         lines = self._build_score_entry_lines(model, state)
 
         y = start_y + TEXT_PAGE_BODY_TOP_OFFSET
+        extra_spacing = int(
+            TEXT_PAGE_BODY_LINE_SPACING
+            * (SCORE_ENTRY_CURRENT_SCORE_SCALE - 1.0)
+        )
         for index, (line, is_current_score) in enumerate(lines):
             if is_current_score and index > 0:
-                y += self._score_entry_current_extra_spacing()
+                y += extra_spacing
 
-            font_size = self._score_entry_line_font_size(is_current_score)
+            font_size = TEXT_PAGE_BODY_FONT_SIZE
+            line_spacing = TEXT_PAGE_BODY_LINE_SPACING
+            if is_current_score:
+                font_size = int(
+                    TEXT_PAGE_BODY_FONT_SIZE
+                    * SCORE_ENTRY_CURRENT_SCORE_SCALE
+                )
+                line_spacing = int(
+                    TEXT_PAGE_BODY_LINE_SPACING
+                    * SCORE_ENTRY_CURRENT_SCORE_SCALE
+                )
+
             self._draw_centered_text(
                 line,
                 y,
                 font_size,
                 TEXT_COLOR,
             )
-            y += self._score_entry_line_spacing(is_current_score)
+            y += line_spacing
 
             if is_current_score and index < len(lines) - 1:
-                y += self._score_entry_current_extra_spacing()
+                y += extra_spacing
 
         displayed_name = state.pending_player_name.strip()
 
@@ -142,8 +159,8 @@ class PageRendererMixin:
     def _build_score_entry_lines(
         self,
         model: ModelProtocol,
-        state: ViewState,
-    ) -> list[ScoreEntryLine]:
+        state,
+    ) -> list[tuple[str, bool]]:
         """Build highscore preview lines with the current player's rank."""
         scores = model.get_top_scores(HIGHSCORE_QUERY_LIMIT)
         current_score = model.get_score()
@@ -175,7 +192,10 @@ class PageRendererMixin:
             )
 
         lines = [
-            (f"{index + 1}. {entry.name} - {entry.score} pts", False)
+            (
+                _format_score_line(index + 1, entry.name, entry.score),
+                False,
+            )
             for index, entry in enumerate(
                 base_scores[:HIGHSCORE_DISPLAY_LIMIT]
             )
@@ -184,7 +204,9 @@ class PageRendererMixin:
         if rank > HIGHSCORE_DISPLAY_LIMIT + 1:
             lines.append(("...", False))
 
-        lines.append((f"{rank}. {player_name} - {current_score} pts", True))
+        lines.append(
+            (_format_score_line(rank, player_name, current_score), True)
+        )
         return lines
 
     def _scores_without_current_saved_entry(
@@ -216,9 +238,9 @@ class PageRendererMixin:
         rank: int,
         player_name: str,
         current_score: int,
-    ) -> list[ScoreEntryLine]:
+    ) -> list[tuple[str, bool]]:
         """Build top 10 lines with current player inserted."""
-        lines: list[ScoreEntryLine] = []
+        lines: list[tuple[str, bool]] = []
         inserted = False
         display_index = 1
         score_index = 0
@@ -227,8 +249,11 @@ class PageRendererMixin:
             if display_index == rank:
                 lines.append(
                     (
-                        f"{display_index}. {player_name}"
-                        f" - {current_score} pts",
+                        _format_score_line(
+                            display_index,
+                            player_name,
+                            current_score,
+                        ),
                         True,
                     )
                 )
@@ -241,41 +266,27 @@ class PageRendererMixin:
 
             entry = scores[score_index]
             lines.append(
-                (f"{display_index}. {entry.name} - {entry.score} pts", False)
+                (
+                    _format_score_line(
+                        display_index,
+                        entry.name,
+                        entry.score,
+                    ),
+                    False,
+                )
             )
             score_index += 1
             display_index += 1
 
         if not inserted and len(lines) < HIGHSCORE_DISPLAY_LIMIT:
             lines.append(
-                (f"{rank}. {player_name} - {current_score} pts", True)
+                (
+                    _format_score_line(rank, player_name, current_score),
+                    True,
+                )
             )
 
         return lines
-
-    def _score_entry_line_font_size(self, is_current_score: bool) -> int:
-        """Return preview font size for normal or current score rows."""
-        if is_current_score:
-            return int(
-                TEXT_PAGE_BODY_FONT_SIZE * SCORE_ENTRY_CURRENT_SCORE_SCALE
-            )
-        return TEXT_PAGE_BODY_FONT_SIZE
-
-    def _score_entry_line_spacing(self, is_current_score: bool) -> int:
-        """Return preview line spacing for normal or current score rows."""
-        if is_current_score:
-            return int(
-                TEXT_PAGE_BODY_LINE_SPACING
-                * SCORE_ENTRY_CURRENT_SCORE_SCALE
-            )
-        return TEXT_PAGE_BODY_LINE_SPACING
-
-    def _score_entry_current_extra_spacing(self) -> int:
-        """Return extra spacing around the current score row."""
-        return int(
-            TEXT_PAGE_BODY_LINE_SPACING
-            * (SCORE_ENTRY_CURRENT_SCORE_SCALE - 1.0)
-        )
 
     def _draw_score_entry_name(
         self,
@@ -297,7 +308,10 @@ class PageRendererMixin:
 
         ray.draw_text(text, x, y, font_size, TEXT_COLOR)
 
-        if not saved and self._should_show_score_entry_cursor():
+        show_cursor = (
+            int(ray.get_time() / SCORE_ENTRY_CURSOR_BLINK_SECONDS) % 2 == 0
+        )
+        if not saved and show_cursor:
             ray.draw_text(
                 cursor,
                 x + text_width + SCORE_ENTRY_CURSOR_GAP,
@@ -306,24 +320,8 @@ class PageRendererMixin:
                 TEXT_COLOR,
             )
 
-    def _should_show_score_entry_cursor(self) -> bool:
-        """Return whether the score-entry cursor is visible this frame."""
-        return int(ray.get_time() / SCORE_ENTRY_CURSOR_BLINK_SECONDS) % 2 == 0
-
     def _draw_instructions(self) -> None:
         """Draw instructions screen."""
-        lines = [
-            "Arrow keys or WASD: move Pac-Man",
-            "Escape: pause or resume",
-            "Enter: confirm menu selection",
-            "F/R: adjust camera FOV",
-            "Pause menu: cheat options for testing",
-            "",
-            "Eat all pacgums to complete the level.",
-            "Super pacgums make ghosts edible for a short time.",
-            "Avoid ghosts when they are not edible.",
-        ]
-
         start_y = self._info_page_start_y()
         self._draw_centered_text(
             "Instructions",
@@ -332,7 +330,7 @@ class PageRendererMixin:
             SELECTED_COLOR,
         )
 
-        for index, line in enumerate(lines):
+        for index, line in enumerate(INSTRUCTION_LINES):
             self._draw_centered_text(
                 line,
                 start_y
@@ -343,7 +341,7 @@ class PageRendererMixin:
             )
 
         self._draw_centered_text(
-            "Press Enter or Escape to return",
+            TEXT_PAGE_RETURN_FOOTER,
             self._window_height - TEXT_PAGE_FOOTER_BOTTOM_OFFSET,
             TEXT_PAGE_BODY_FONT_SIZE,
             MUTED_TEXT_COLOR,

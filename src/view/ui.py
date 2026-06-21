@@ -28,6 +28,7 @@ from src.view.menu_chase_scene import MenuChaseScene
 from src.view.menus import MenuRendererMixin
 from src.view.pages import PageRendererMixin
 from src.view.scene_3d import Scene3DRendererMixin
+from src.view.screen_shake import ScreenShake
 from src.view.wall_shapes import WallAssetKind
 
 
@@ -90,6 +91,8 @@ class GameView(
         self._wall_models: dict[WallAssetKind, tuple[Any, Any]] = {}
         self._entity_models: dict[str, Any] = {}
         self._background_texture: Any | None = None
+        self.screen_shake = ScreenShake()
+        self._previous_lives: int | None = None
         self._menu_chase_scene = MenuChaseScene(self._entity_models)
         self._last_pacman_direction = Direction.DOWN
 
@@ -129,6 +132,7 @@ class GameView(
         ray.clear_background(BACKGROUND)
 
         phase = model.get_game_phase()
+        self._update_death_shake(model)
 
         if phase == GamePhase.MAIN_MENU:
             draw_arcade_background(
@@ -174,6 +178,17 @@ class GameView(
                 self._draw_end_screen(model, "YOU WIN!")
 
         ray.end_drawing()
+
+    def _update_death_shake(self, model: ModelProtocol) -> None:
+        """Start world shake once when the model reports a lost life."""
+        current_lives = model.get_lives()
+        if (
+            self._previous_lives is not None
+            and current_lives < self._previous_lives
+        ):
+            self.screen_shake.start(duration=0.40, strength=0.12)
+
+        self._previous_lives = current_lives
 
     def _draw_main_menu_chase_background(self) -> None:
         """Draw the MAIN_MENU-only 3D chase backdrop under 2D UI."""

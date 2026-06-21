@@ -22,6 +22,7 @@ from src.types.protocols import ModelProtocol
 from src.view.background import draw_arcade_background
 from src.view.entities_3d import Entity3DRendererMixin
 from src.view.fov import FovRendererMixin
+from src.view.screen_shake import ScreenShake
 from src.view.wall_shapes import WallAssetKind, get_wall_asset_kind
 
 
@@ -36,9 +37,11 @@ class Scene3DRendererMixin(Entity3DRendererMixin, FovRendererMixin):
     _wall_models: dict[WallAssetKind, tuple[Any, Any]]
     _entity_models: dict[str, Any]
     _background_texture: Any | None
+    screen_shake: ScreenShake
 
     def _draw_game(self, model: ModelProtocol) -> None:
         """Draw gameplay screen."""
+        self.screen_shake.update(ray.get_frame_time())
         draw_arcade_background(
             self._window_width,
             self._window_height,
@@ -49,8 +52,9 @@ class Scene3DRendererMixin(Entity3DRendererMixin, FovRendererMixin):
         grid = model.get_grid()
         pacman = model.get_pacman()
         ghosts = model.get_ghosts()
+        camera = self._shake_camera()
 
-        ray.begin_mode_3d(self._camera)
+        ray.begin_mode_3d(camera)
         self._draw_3d_grid(grid)
         self._draw_3d_pacman(pacman, grid)
 
@@ -60,6 +64,33 @@ class Scene3DRendererMixin(Entity3DRendererMixin, FovRendererMixin):
         ray.end_mode_3d()
 
         self._draw_hud(model)
+
+    def _shake_camera(self) -> Any:
+        """Return a temporary camera offset for 3D-world shake only."""
+        if not self.screen_shake.is_active():
+            return self._camera
+
+        offset_x = self.screen_shake.offset_x
+        offset_z = self.screen_shake.offset_z
+        return ray.Camera3D(
+            ray.Vector3(
+                self._camera.position.x + offset_x,
+                self._camera.position.y,
+                self._camera.position.z + offset_z,
+            ),
+            ray.Vector3(
+                self._camera.target.x + offset_x,
+                self._camera.target.y,
+                self._camera.target.z + offset_z,
+            ),
+            ray.Vector3(
+                self._camera.up.x,
+                self._camera.up.y,
+                self._camera.up.z,
+            ),
+            self._camera.fovy,
+            self._camera.projection,
+        )
 
     def _grid_to_world(
         self,

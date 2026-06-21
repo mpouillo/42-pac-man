@@ -22,6 +22,13 @@ from src.types.dataclasses import GhostData
 from src.types.enums import CellState, Direction, GhostState, GhostType
 from src.view.entity_orientation import yaw_sway_rotation
 
+GHOST_VISUAL_OFFSETS = {
+    GhostType.RED: (0.15, -0.08),
+    GhostType.PINK: (0.05, 0.08),
+    GhostType.BLUE: (-0.05, -0.08),
+    GhostType.ORANGE: (-0.15, 0.08),
+}
+
 
 class Entity3DRendererMixin:
     """Load and draw gameplay entity models."""
@@ -143,6 +150,9 @@ class Entity3DRendererMixin:
             grid,
             GHOST_MODEL_HEIGHT,
         )
+        offset_x, offset_z = self._ghost_visual_offset(ghost.type)
+        position.x += offset_x
+        position.z += offset_z
 
         rotation_axis, rotation_angle = self._ghost_rotation(ghost)
 
@@ -177,6 +187,13 @@ class Entity3DRendererMixin:
             case GhostType.ORANGE:
                 return "ghost_orange"
         raise ValueError(f"Unsupported ghost type: {ghost.type}")
+
+    def _ghost_visual_offset(
+        self,
+        ghost_type: GhostType,
+    ) -> tuple[float, float]:
+        """Return a small fixed render offset to prevent ghost overlap."""
+        return GHOST_VISUAL_OFFSETS[ghost_type]
 
     def _ghost_rotation(self, ghost: GhostData) -> tuple[Any, float]:
         """Return one axis-angle rotation for a swaying ghost."""

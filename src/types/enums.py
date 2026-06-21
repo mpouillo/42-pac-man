@@ -1,8 +1,9 @@
 from enum import Enum, auto
-from typing import List
 
 
 class CellState(Enum):
+    """Represent the structural or item state of a single grid cell."""
+
     EMPTY = auto()
     WALL = auto()
     PACGUM = auto()
@@ -10,6 +11,8 @@ class CellState(Enum):
 
 
 class CheatType(Enum):
+    """Define the available cheat codes inside the game engine."""
+
     INVINCIBILITY = auto()
     LEVEL_SKIP = auto()
     GHOST_FREEZE = auto()
@@ -17,7 +20,8 @@ class CheatType(Enum):
 
 
 class Direction(Enum):
-    """(x, y)"""
+    """Represent 2D vector coordinates for grid movement directions."""
+
     UP = (0, -1)
     LEFT = (-1, 0)
     DOWN = (0, 1)
@@ -26,6 +30,7 @@ class Direction(Enum):
 
     @property
     def opposite(self) -> "Direction":
+        """Return the inverted directional Enum member."""
         x, y = self.value
         return Direction((-x, -y))
 
@@ -34,7 +39,8 @@ class Direction(Enum):
         cls,
         p1: tuple[float, float],
         p2: tuple[float, float]
-    ) -> List["Direction"]:
+    ) -> list["Direction"]:
+        """Sort cardinal directions by proximity to a target vector."""
         dx = p2[0] - p1[0]
         dy = p2[1] - p1[1]
         cardinals = [cls.UP, cls.DOWN, cls.LEFT, cls.RIGHT]
@@ -47,6 +53,8 @@ class Direction(Enum):
 
 
 class GamePhase(Enum):
+    """Represent the overarching state phases of the game loop."""
+
     MAIN_MENU = auto()
     HIGHSCORES_MENU = auto()
     INSTRUCTIONS_MENU = auto()
@@ -57,20 +65,24 @@ class GamePhase(Enum):
 
 
 class GhostState(Enum):
-    # (name: str, is_lethal: bool, is_edible: bool)
+    """Define ghost behavioral states and their associated properties."""
+
     CHASE = ("chase", True, False)
     SCATTER = ("scatter", True, False)
     FRIGHTENED = ("frightened", False, True)
-    FLASHING = ("flashing", False, True)
+    FLASHING = ("fashing", False, True)
     EATEN = ("eaten", False, False)
 
     def __init__(self, state_name: str, lethal: bool, edible: bool):
+        """Assign underlying property attributes to the state member."""
         self.state_name = state_name
         self.is_lethal = lethal
         self.is_edible = edible
 
 
 class GhostType(Enum):
+    """Identify individual ghost entities by their canonical names."""
+
     PINK = "Pinky"
     RED = "Blinky"
     ORANGE = "Clyde"

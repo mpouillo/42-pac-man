@@ -22,7 +22,10 @@ from src.types.protocols import ModelProtocol
 
 
 class GameModel(ModelProtocol):
+    """The main game model managing Pac-Man game states, logic and entities."""
+
     def __init__(self, config: ConfigData) -> None:
+        """Initialize the game model instance with configuration settings."""
         self._config = config
 
         self._level_id: int = 0
@@ -41,36 +44,47 @@ class GameModel(ModelProtocol):
         self._level_timer: float = self._level.data.time_limit
 
     def get_game_phase(self) -> GamePhase:
+        """Return the current phase of the game."""
         return self._phase
 
     def set_game_phase(self, phase: GamePhase) -> None:
+        """Set the game phase to a new state."""
         self._phase = phase
 
     def get_current_level(self) -> int:
+        """Return the ID of the currently active level."""
         return self._level_id
 
     def get_remaining_time(self) -> float:
+        """Return the remaining time limit for the current level."""
         return self._level_timer
 
     def get_pacman(self) -> PacmanData:
+        """Return the data state container for Pac-Man."""
         return self._pacman.data
 
     def get_ghosts(self) -> list[GhostData]:
+        """Return a list containing the data state of all active ghosts."""
         return [ghost.data for ghost in self._ghosts]
 
     def get_grid(self) -> list[list[CellState]]:
+        """Return the grid layout representing the current level map."""
         return self._level.grid
 
     def get_score(self) -> int:
+        """Return the player's current total score."""
         return self._score
 
     def get_lives(self) -> int:
+        """Return the remaining number of player lives."""
         return self._lives
 
     def is_game_over(self) -> bool:
+        """Check whether the game state has transitioned to game over."""
         return self._phase == GamePhase.GAME_OVER
 
     def set_player_input(self, direction: Direction) -> None:
+        """Set Pac-Man's direction instantly or queue it in a buffer."""
         # Instantly set direction if opposite of current
         if self._pacman.direction.opposite == direction:
             self._pacman.direction = direction
@@ -80,9 +94,11 @@ class GameModel(ModelProtocol):
         self._pacman.queued_direction = direction
 
     def get_top_scores(self, amount: int) -> list[HighscoreEntry]:
+        """Retrieve a specified number of high scores from the manager."""
         return self._highscore_manager.get_top_scores(amount)
 
     def submit_score(self, player_name: str) -> bool:
+        """Validate and submit a new score to the high score registry."""
         try:
             entry = HighscoreEntry(name=player_name, score=self._score)
         except ValidationError:
@@ -93,6 +109,7 @@ class GameModel(ModelProtocol):
         return True
 
     def toggle_cheat(self, cheat: CheatType) -> None:
+        """Toggle a cheat status or execute an immediate cheat action."""
         if cheat == CheatType.LEVEL_SKIP:
             self._win_round()
             return
@@ -104,6 +121,7 @@ class GameModel(ModelProtocol):
         self._cheats.append(cheat)
 
     def update(self, delta_time: float) -> None:
+        """Update game logic and countdowns based on elapsed time."""
         if self._phase == GamePhase.MAIN_MENU:
             return
         elif self._phase == GamePhase.HIGHSCORES_MENU:
@@ -115,9 +133,9 @@ class GameModel(ModelProtocol):
 
             if self._lives <= 0:
                 self._phase = GamePhase.GAME_OVER
-            if self._level.pacgums == 0:
+            elif self._level.pacgums == 0:
                 self._win_round()
-            if self._level_timer <= 0:
+            elif self._level_timer <= 0:
                 self._lose_round()
 
             self._pacman_actions(delta_time)
@@ -130,10 +148,12 @@ class GameModel(ModelProtocol):
             return
 
     def _win_round(self) -> None:
-        self._score += int(self._level_timer) * 100
+        """Transition the game phase on win or advance to the next level."""
+        self._score += int(
+            self._level_timer
+            * self._config.points_per_second_left
+        )
 
-        # If at last level
-        # if len(self._config.levels) - 1 >= self._level_id:
         if self._level_id >= len(self._config.levels) - 1:
             self._phase = GamePhase.WIN
             return
@@ -143,12 +163,14 @@ class GameModel(ModelProtocol):
         self._reset()
 
     def _lose_round(self) -> None:
+        """Deduct a life and trigger a round reset or a game over state."""
         self._lives -= 1
         self._reset()
         if self._lives == 0:
             self._phase = GamePhase.GAME_OVER
 
     def _pacman_actions(self, delta_time: float) -> None:
+        """Process Pac-Man tile updates, point additions and position loops."""
         pos = (round(self._pacman.x), round(self._pacman.y))
         match self._level.grid[pos[1]][pos[0]]:
             case CellState.PACGUM:
@@ -170,19 +192,21 @@ class GameModel(ModelProtocol):
         self._pacman.update(delta_time)
 
     def _ghost_actions(self, delta_time: float) -> None:
-        """Update Ghost positions."""
+        """Update positions and AI states for all ghosts unless frozen."""
         if CheatType.GHOST_FREEZE in self._cheats:
             return
 
         red_ghost = next(
             (ghost.data for ghost in self._ghosts
-             if ghost.type == GhostType.RED)
+             if ghost.type == GhostType.RED),
+            None
         )
 
         for ghost in self._ghosts:
             ghost.update(delta_time, self.get_pacman(), red_ghost)
 
     def _check_collisions(self) -> None:
+        """Evaluate proximity collisions between Pac-Man and active ghosts."""
         for ghost in self._ghosts:
             if self._did_collide(ghost):
                 if ghost.state.is_edible:
@@ -195,10 +219,7 @@ class GameModel(ModelProtocol):
                     return
 
     def _did_collide(self, ghost: Ghost) -> bool:
-        """
-        Check for collisions (distance < 0.5)
-        between Pac-Man and Ghosts.
-        """
+        """Check for a distance-based collision between Pac-Man and a ghost."""
         ghost_pos = [ghost.x, ghost.y]
         pacman_pos = [self._pacman.x, self._pacman.y]
         if math.dist(ghost_pos, pacman_pos) < 0.5:
@@ -206,7 +227,7 @@ class GameModel(ModelProtocol):
         return False
 
     def _reset(self) -> None:
-        """Reset values and restart game."""
+        """Reset entity placements and timer metrics to restart a level."""
         self._phase = GamePhase.PLAYING
         self._level_timer = self._level.data.time_limit
         self._pacman = Pacman(self._level)

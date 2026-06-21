@@ -6,85 +6,92 @@ from src.types.enums import CellState, CheatType, Direction, GamePhase
 
 
 class ModelProtocol(Protocol):
+    """Define the state management and execution logic for the game loop."""
+
     def get_game_phase(self) -> GamePhase:
-        """Tells the View which screen (Menu, Playing, Game Over) to draw."""
+        """Retrieve the active game phase determining the current view."""
         ...
 
     def set_game_phase(self, phase: GamePhase) -> None:
-        """Allows the Controller to change screens (e.g., clicking 'Start')."""
+        """Transition the game engine loop to a new operational phase."""
         ...
 
     def get_current_level(self) -> int:
-        """Required for the HUD."""
+        """Return the current level index for tracking and rendering."""
         ...
 
     def get_remaining_time(self) -> float:
-        """Returns remaining seconds for the level (Required for the HUD)."""
+        """Return the remaining level time limit in seconds."""
         ...
 
     def get_pacman(self) -> PacmanData:
-        """Returns the player's current exact position and facing direction."""
+        """Get the current positional and state data for Pacman."""
         ...
 
     def get_ghosts(self) -> list[GhostData]:
-        """Returns the state and position of all 4 ghosts."""
+        """Get the positional and state data for all active ghosts."""
         ...
 
     def get_grid(self) -> list[list[CellState]]:
-        """Returns the current grid."""
+        """Retrieve the structural grid layout matrix of the level."""
         ...
 
     def get_score(self) -> int:
+        """Get the current running score accumulated by the player."""
         ...
 
     def get_lives(self) -> int:
+        """Get the number of remaining lives available to the player."""
         ...
 
     def is_game_over(self) -> bool:
+        """Determine whether a game over criteria has been reached."""
         ...
 
     def update(self, delta_time: float) -> None:
-        """Advances the game simulation by the given time step."""
+        """Advance the game simulation logic by the given time step."""
         ...
 
     def set_player_input(self, direction: Direction) -> None:
-        """Registers the player's intended movement for the next frame."""
+        """Queue the player's intended input direction for processing."""
         ...
 
     def get_top_scores(self, amount: int) -> list[HighscoreEntry]:
-        """Returns the top 10 scores to be displayed in the menu."""
+        """Retrieve a specified number of sorted highscore entries."""
         ...
 
     def submit_score(self, player_name: str) -> bool:
-        """
-        Saves a new highscore to disk if valid.
-        Returns True if successful.
-        """
+        """Save a score entry to storage if it qualifies as valid."""
         ...
 
     def toggle_cheat(self, cheat: CheatType) -> None:
-        """Instantly mutates game rules depending on cheat type."""
+        """Toggle a game engine modifier based on the cheat type."""
         ...
 
 
 class ViewProtocol(Protocol):
+    """Interface handling graphic engine contexts and hardware rendering."""
+
     def initialize(self, window_width: int, window_height: int) -> None:
-        """Sets up the Raylib window, loads 3D models, textures, and sounds."""
+        """Initialize window dimensions, graphics pipelines, and assets."""
         ...
 
     def render(self, model: ModelProtocol) -> None:
-        """
-        Reads the model state and draws the frame.
-        Internally, this should call Raylib's BeginMode3D() for the main game,
-        then switch to 2D drawing for the minimap and HUD.
+        """Read the model state data and draw the current frame.
+
+        This evaluates 3D world space elements before rendering 2D
+        overlays like HUD maps and screen menus.
         """
         ...
 
     def shutdown(self) -> None:
-        """Unloads Raylib assets from VRAM and closes the window safely."""
+        """Deallocate graphic assets from memory and close the display."""
         ...
 
 
 class ControllerProtocol(Protocol):
+    """Interface managing user input mapping and runtime coordination."""
+
     def run(self) -> None:
+        """Start and maintain the core application and execution loop."""
         ...

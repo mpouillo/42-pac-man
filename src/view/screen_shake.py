@@ -1,7 +1,5 @@
 """Small 3D-world-only camera shake effect."""
 
-from __future__ import annotations
-
 import math
 
 
@@ -33,13 +31,12 @@ class ScreenShake:
 
         self._elapsed = min(self._duration, self._elapsed + max(0.0, dt))
         progress = self._elapsed / self._duration if self._duration else 1.0
-        falloff = (1.0 - progress) ** 2
-        amplitude = self._strength * falloff
+        amplitude = self._strength * (1.0 - progress) ** 2
 
         self.offset_x = math.sin(self._elapsed * 95.0) * amplitude
         self.offset_z = math.cos(self._elapsed * 117.0) * amplitude
 
-        if not self.is_active():
+        if self._elapsed >= self._duration:
             self.offset_x = 0.0
             self.offset_z = 0.0
 

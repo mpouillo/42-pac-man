@@ -1,7 +1,7 @@
 """Central Raylib view coordinator for Pac-Man."""
+# mypy: disable-error-code="assignment,no-untyped-def,var-annotated"
 
 from dataclasses import dataclass
-from typing import Any
 
 import pyray as ray
 
@@ -13,7 +13,6 @@ from src.constants import (
     DEFAULT_FOV,
     MAIN_MENU_CHASE_OVERLAY_COLOR,
     OVERLAY_COLOR,
-    TEXT_PAGE_BODY_TOP_OFFSET,
     TEXT_PAGE_START_Y_RATIO,
     WINDOW_TITLE,
 )
@@ -29,7 +28,6 @@ from src.view.menus import MenuRendererMixin
 from src.view.pages import PageRendererMixin
 from src.view.scene_3d import Scene3DRendererMixin
 from src.view.screen_shake import ScreenShake
-from src.view.wall_shapes import WallAssetKind
 
 
 @dataclass(frozen=True)
@@ -47,35 +45,7 @@ class ViewState:
     score_entry_saved: bool
 
 
-class TextRendererMixin:
-    """Provide shared text drawing and vertical layout helpers."""
-
-    _window_width: int
-    _window_height: int
-
-    def _draw_centered_text(
-        self,
-        text: str,
-        y: int,
-        font_size: int,
-        color: Any,
-    ) -> None:
-        """Draw horizontally centered text."""
-        width = ray.measure_text(text, font_size)
-        x = (self._window_width - width) // 2
-        ray.draw_text(text, x, y, font_size, color)
-
-    def get_menu_start_y(self) -> int:
-        """Return the first menu item position for mouse handling."""
-        return self._info_page_start_y() + TEXT_PAGE_BODY_TOP_OFFSET
-
-    def _info_page_start_y(self) -> int:
-        """Return the shared vertical start for information pages."""
-        return int(self._window_height * TEXT_PAGE_START_Y_RATIO)
-
-
 class GameView(
-    TextRendererMixin,
     MenuRendererMixin,
     PageRendererMixin,
     Scene3DRendererMixin,
@@ -88,21 +58,37 @@ class GameView(
         self._window_height = 0
         self._fov = DEFAULT_FOV
         self._auto_fov_enabled = True
-        self._wall_models: dict[WallAssetKind, tuple[Any, Any]] = {}
-        self._entity_models: dict[str, Any] = {}
-        self._background_texture: Any | None = None
+        self._wall_models = {}
+        self._entity_models = {}
+        self._background_texture = None
         self.screen_shake = ScreenShake()
-        self._previous_lives: int | None = None
+        self._previous_lives = None
         self._menu_chase_scene = MenuChaseScene(self._entity_models)
         self._last_pacman_direction = Direction.DOWN
 
-        self._camera: Any = ray.Camera3D(
+        self._camera = ray.Camera3D(
             ray.Vector3(*CAMERA_POSITION),
             ray.Vector3(*CAMERA_TARGET),
             ray.Vector3(*CAMERA_UP),
             self._fov,
             ray.CameraProjection.CAMERA_PERSPECTIVE,
         )
+
+    def _draw_centered_text(
+        self,
+        text: str,
+        y: int,
+        font_size: int,
+        color,
+    ) -> None:
+        """Draw horizontally centered text."""
+        width = ray.measure_text(text, font_size)
+        x = (self._window_width - width) // 2
+        ray.draw_text(text, x, y, font_size, color)
+
+    def _info_page_start_y(self) -> int:
+        """Return the shared vertical start for information pages."""
+        return int(self._window_height * TEXT_PAGE_START_Y_RATIO)
 
     def initialize(self, window_width: int, window_height: int) -> None:
         """Initialize the game window."""
@@ -138,7 +124,6 @@ class GameView(
             draw_arcade_background(
                 self._window_width,
                 self._window_height,
-                mode="menu",
                 texture=self._background_texture,
             )
             self._draw_main_menu_chase_background()

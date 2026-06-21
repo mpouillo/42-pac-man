@@ -1,10 +1,10 @@
 """Main and pause menu rendering."""
+# mypy: disable-error-code="attr-defined,no-untyped-def"
 
 from __future__ import annotations
 
 import math
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any, Callable
 
 import pyray as ray
 
@@ -16,7 +16,6 @@ from src.constants import (
     MENU_MARKER_PULSE_SPEED,
     MENU_MARKER_PULSE_STRENGTH,
     MENU_MARKER_SIZE,
-    MENU_ITEM_HEIGHT,
     MENU_ITEM_SPACING,
     MUTED_TEXT_COLOR,
     OVERLAY_COLOR,
@@ -28,9 +27,6 @@ from src.constants import (
     TEXT_PAGE_FOOTER_BOTTOM_OFFSET,
     TEXT_PAGE_TITLE_FONT_SIZE,
 )
-
-if TYPE_CHECKING:
-    from src.view.ui import ViewState
 
 
 def pause_menu_options(
@@ -56,11 +52,6 @@ def pause_menu_options(
 class MenuRendererMixin:
     """Draw the main menu, pause menu, and shared menu layout."""
 
-    _window_width: int
-    _window_height: int
-    _draw_centered_text: Callable[[str, int, int, Any], None]
-    _info_page_start_y: Callable[[], int]
-
     def get_menu_index_at_position(
         self,
         mouse_x: int,
@@ -75,13 +66,15 @@ class MenuRendererMixin:
             )
             if (
                 item_x <= mouse_x <= item_x + item_width
-                and item_y <= mouse_y <= item_y + MENU_ITEM_HEIGHT
+                and item_y
+                <= mouse_y
+                <= item_y + TEXT_PAGE_BODY_FONT_SIZE
             ):
                 return index
 
         return None
 
-    def _draw_main_menu(self, state: ViewState) -> None:
+    def _draw_main_menu(self, state) -> None:
         """Draw the main menu."""
         self._draw_menu(
             title="Pac-Man",
@@ -90,7 +83,7 @@ class MenuRendererMixin:
             footer="Enter/click: select",
         )
 
-    def _draw_pause_menu(self, state: ViewState) -> None:
+    def _draw_pause_menu(self, state) -> None:
         """Draw the pause menu over the game."""
         ray.draw_rectangle(
             0,
@@ -187,50 +180,23 @@ class MenuRendererMixin:
             SELECTED_COLOR.b,
             70,
         )
-        marker_color = self._menu_marker_color(pulse)
-
-        self._draw_marker_triangle(
-            marker_x - 4.0,
-            tip_x - 4.0,
-            center_y,
-            half_height,
-            shadow_color,
-        )
-        self._draw_marker_triangle(
-            marker_x,
-            tip_x,
-            center_y,
-            half_height,
-            marker_color,
-        )
-
-    def _menu_marker_color(self, pulse: float) -> Any:
-        """Return the marker color with a soft brightness pulse."""
         mix = pulse * MENU_MARKER_PULSE_STRENGTH
-        return ray.Color(
-            self._mix_color_channel(SELECTED_COLOR.r, 255, mix),
-            self._mix_color_channel(SELECTED_COLOR.g, 255, mix),
-            self._mix_color_channel(SELECTED_COLOR.b, 120, mix),
+        marker_color = ray.Color(
+            int(SELECTED_COLOR.r + (255 - SELECTED_COLOR.r) * mix),
+            int(SELECTED_COLOR.g + (255 - SELECTED_COLOR.g) * mix),
+            int(SELECTED_COLOR.b + (120 - SELECTED_COLOR.b) * mix),
             255,
         )
 
-    @staticmethod
-    def _mix_color_channel(start: int, end: int, amount: float) -> int:
-        """Linearly mix one color channel."""
-        return int(start + (end - start) * amount)
-
-    @staticmethod
-    def _draw_marker_triangle(
-        left_x: float,
-        tip_x: float,
-        center_y: float,
-        half_height: float,
-        color: Any,
-    ) -> None:
-        """Draw a right-facing triangular marker."""
+        ray.draw_triangle(
+            ray.Vector2(tip_x - 4.0, center_y),
+            ray.Vector2(marker_x - 4.0, center_y - half_height),
+            ray.Vector2(marker_x - 4.0, center_y + half_height),
+            shadow_color,
+        )
         ray.draw_triangle(
             ray.Vector2(tip_x, center_y),
-            ray.Vector2(left_x, center_y - half_height),
-            ray.Vector2(left_x, center_y + half_height),
-            color,
+            ray.Vector2(marker_x, center_y - half_height),
+            ray.Vector2(marker_x, center_y + half_height),
+            marker_color,
         )

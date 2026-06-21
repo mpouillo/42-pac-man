@@ -5,12 +5,6 @@ from enum import Enum
 from src.types.enums import CellState
 
 
-WALL_UP = 1
-WALL_RIGHT = 2
-WALL_DOWN = 4
-WALL_LEFT = 8
-
-
 class WallAssetKind(Enum):
     """Identify wall model shapes with their final direction."""
 
@@ -37,23 +31,23 @@ class WallAssetKind(Enum):
     CROSS = "cross"
 
 
-_WALL_ASSET_BY_MASK = {
-    0: WallAssetKind.ISOLATED,
-    WALL_UP: WallAssetKind.END_UP,
-    WALL_RIGHT: WallAssetKind.END_RIGHT,
-    WALL_DOWN: WallAssetKind.END_DOWN,
-    WALL_LEFT: WallAssetKind.END_LEFT,
-    WALL_UP | WALL_DOWN: WallAssetKind.STRAIGHT_VERTICAL,
-    WALL_LEFT | WALL_RIGHT: WallAssetKind.STRAIGHT_HORIZONTAL,
-    WALL_UP | WALL_RIGHT: WallAssetKind.CORNER_UP_RIGHT,
-    WALL_RIGHT | WALL_DOWN: WallAssetKind.CORNER_RIGHT_DOWN,
-    WALL_DOWN | WALL_LEFT: WallAssetKind.CORNER_DOWN_LEFT,
-    WALL_LEFT | WALL_UP: WallAssetKind.CORNER_LEFT_UP,
-    WALL_UP | WALL_RIGHT | WALL_DOWN: WallAssetKind.T_UP_RIGHT_DOWN,
-    WALL_RIGHT | WALL_DOWN | WALL_LEFT: WallAssetKind.T_RIGHT_DOWN_LEFT,
-    WALL_DOWN | WALL_LEFT | WALL_UP: WallAssetKind.T_DOWN_LEFT_UP,
-    WALL_LEFT | WALL_UP | WALL_RIGHT: WallAssetKind.T_LEFT_UP_RIGHT,
-    WALL_UP | WALL_RIGHT | WALL_DOWN | WALL_LEFT: WallAssetKind.CROSS,
+_WALL_ASSET_BY_NEIGHBORS = {
+    (False, False, False, False): WallAssetKind.ISOLATED,
+    (True, False, False, False): WallAssetKind.END_UP,
+    (False, True, False, False): WallAssetKind.END_RIGHT,
+    (False, False, True, False): WallAssetKind.END_DOWN,
+    (False, False, False, True): WallAssetKind.END_LEFT,
+    (True, False, True, False): WallAssetKind.STRAIGHT_VERTICAL,
+    (False, True, False, True): WallAssetKind.STRAIGHT_HORIZONTAL,
+    (True, True, False, False): WallAssetKind.CORNER_UP_RIGHT,
+    (False, True, True, False): WallAssetKind.CORNER_RIGHT_DOWN,
+    (False, False, True, True): WallAssetKind.CORNER_DOWN_LEFT,
+    (True, False, False, True): WallAssetKind.CORNER_LEFT_UP,
+    (True, True, True, False): WallAssetKind.T_UP_RIGHT_DOWN,
+    (False, True, True, True): WallAssetKind.T_RIGHT_DOWN_LEFT,
+    (True, False, True, True): WallAssetKind.T_DOWN_LEFT_UP,
+    (True, True, False, True): WallAssetKind.T_LEFT_UP_RIGHT,
+    (True, True, True, True): WallAssetKind.CROSS,
 }
 
 
@@ -71,31 +65,16 @@ def is_wall_at(
     return grid[y][x] == CellState.WALL
 
 
-def get_wall_mask(
-    grid: list[list[CellState]],
-    x: int,
-    y: int,
-) -> int:
-    """Return wall connection mask using up/right/down/left neighbors."""
-    mask = 0
-
-    if is_wall_at(grid, x, y - 1):
-        mask |= WALL_UP
-    if is_wall_at(grid, x + 1, y):
-        mask |= WALL_RIGHT
-    if is_wall_at(grid, x, y + 1):
-        mask |= WALL_DOWN
-    if is_wall_at(grid, x - 1, y):
-        mask |= WALL_LEFT
-
-    return mask
-
-
 def get_wall_asset_kind(
     grid: list[list[CellState]],
     x: int,
     y: int,
 ) -> WallAssetKind:
     """Return the wall asset matching neighboring walls."""
-    mask = get_wall_mask(grid, x, y)
-    return _WALL_ASSET_BY_MASK[mask]
+    neighbors = (
+        is_wall_at(grid, x, y - 1),
+        is_wall_at(grid, x + 1, y),
+        is_wall_at(grid, x, y + 1),
+        is_wall_at(grid, x - 1, y),
+    )
+    return _WALL_ASSET_BY_NEIGHBORS[neighbors]

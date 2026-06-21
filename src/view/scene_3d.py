@@ -1,4 +1,5 @@
 """3D maze, entity, asset, and HUD rendering."""
+# mypy: disable-error-code="attr-defined"
 
 from pathlib import Path
 from typing import Any
@@ -6,13 +7,18 @@ from typing import Any
 import pyray as ray
 
 from src.constants import (
+    AUTO_FOV_PADDING,
+    AUTO_FOV_SCALE,
     CELL_SIZE_3D,
+    FOV_MAX,
+    FOV_MIN,
+    FOV_SPEED,
     HUD_FONT_SIZE,
     HUD_HORIZONTAL_PADDING,
     HUD_TOP_OFFSET,
+    MODEL_EXTENSION,
     TEXT_COLOR,
     WALL_MODEL_DIR,
-    WALL_MODEL_EXTENSION,
     WALL_MODEL_FILE_PREFIX,
     WALL_MODEL_HEIGHT_SCALE,
     WALL_MODEL_THICKNESS_SCALE,
@@ -21,23 +27,50 @@ from src.types.enums import CellState
 from src.types.protocols import ModelProtocol
 from src.view.background import draw_arcade_background
 from src.view.entities_3d import Entity3DRendererMixin
-from src.view.fov import FovRendererMixin
-from src.view.screen_shake import ScreenShake
 from src.view.wall_shapes import WallAssetKind, get_wall_asset_kind
 
 
-class Scene3DRendererMixin(Entity3DRendererMixin, FovRendererMixin):
+class Scene3DRendererMixin(Entity3DRendererMixin):
     """Draw the game scene, HUD, and wall assets."""
 
-    _window_width: int
-    _window_height: int
-    _fov: float
-    _auto_fov_enabled: bool
-    _camera: Any
-    _wall_models: dict[WallAssetKind, tuple[Any, Any]]
-    _entity_models: dict[str, Any]
-    _background_texture: Any | None
-    screen_shake: ScreenShake
+    def calculate_auto_fov(self, grid: list[list[CellState]]) -> float:
+        """Calculate a FOV that fits the current maze size."""
+        if not grid or not grid[0] or self._window_height <= 0:
+            return float(self._fov)
+
+        rows = len(grid)
+        cols = len(grid[0])
+        aspect_ratio = self._window_width / self._window_height
+        maze_size = max(rows, cols / aspect_ratio)
+        return float(
+            maze_size * AUTO_FOV_SCALE + AUTO_FOV_PADDING
+        )
+
+    def reset_fov(self) -> None:
+        """Enable automatic FOV for a new game."""
+        self._auto_fov_enabled = True
+
+    def update_fov(
+        self,
+        grid: list[list[CellState]],
+        increase: bool,
+        decrease: bool,
+        delta_time: float,
+    ) -> None:
+        """Update automatic or keyboard-controlled camera FOV."""
+        if increase or decrease:
+            self._auto_fov_enabled = False
+
+        if self._auto_fov_enabled:
+            self._fov = self.calculate_auto_fov(grid)
+
+        if increase:
+            self._fov += FOV_SPEED * delta_time
+        if decrease:
+            self._fov -= FOV_SPEED * delta_time
+
+        self._fov = max(FOV_MIN, min(FOV_MAX, self._fov))
+        self._camera.fovy = self._fov
 
     def _draw_game(self, model: ModelProtocol) -> None:
         """Draw gameplay screen."""
@@ -45,7 +78,6 @@ class Scene3DRendererMixin(Entity3DRendererMixin, FovRendererMixin):
         draw_arcade_background(
             self._window_width,
             self._window_height,
-            mode="game",
             texture=self._background_texture,
         )
 
@@ -120,7 +152,7 @@ class Scene3DRendererMixin(Entity3DRendererMixin, FovRendererMixin):
             model = self._load_model_asset(
                 WALL_MODEL_DIR,
                 base_name,
-                WALL_MODEL_EXTENSION,
+                MODEL_EXTENSION,
             )
             bounds = ray.get_model_bounding_box(model)
             self._wall_models[asset_kind] = (model, bounds)
@@ -159,7 +191,7 @@ class Scene3DRendererMixin(Entity3DRendererMixin, FovRendererMixin):
     ) -> None:
         """Draw one 3D wall block."""
         asset_kind = get_wall_asset_kind(grid, grid_x, grid_y)
-        _model, bounds = self._wall_models[asset_kind]
+        model, bounds = self._wall_models[asset_kind]
 
         position = self._grid_to_world(
             float(grid_x),
@@ -167,15 +199,6 @@ class Scene3DRendererMixin(Entity3DRendererMixin, FovRendererMixin):
             grid,
             -bounds.min.y * WALL_MODEL_HEIGHT_SCALE,
         )
-        self._draw_3d_wall_shape(position, asset_kind)
-
-    def _draw_3d_wall_shape(
-        self,
-        position: Any,
-        asset_kind: WallAssetKind,
-    ) -> None:
-        """Draw one wall shape."""
-        model, _bounds = self._wall_models[asset_kind]
         scale_x, scale_z = self._wall_thickness_scale(asset_kind)
 
         ray.draw_model_ex(

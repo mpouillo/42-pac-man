@@ -11,6 +11,7 @@ from src.constants import (
     CAMERA_TARGET,
     CAMERA_UP,
     DEFAULT_FOV,
+    MAIN_MENU_CHASE_OVERLAY_COLOR,
     OVERLAY_COLOR,
     TEXT_PAGE_BODY_TOP_OFFSET,
     TEXT_PAGE_START_Y_RATIO,
@@ -18,6 +19,12 @@ from src.constants import (
 )
 from src.types.enums import Direction, GamePhase
 from src.types.protocols import ModelProtocol
+from src.view.background import (
+    draw_arcade_background,
+    load_arcade_background_texture,
+    unload_arcade_background_texture,
+)
+from src.view.menu_chase_scene import MenuChaseScene
 from src.view.menus import MenuRendererMixin
 from src.view.pages import PageRendererMixin
 from src.view.scene_3d import Scene3DRendererMixin
@@ -82,6 +89,8 @@ class GameView(
         self._auto_fov_enabled = True
         self._wall_models: dict[WallAssetKind, tuple[Any, Any]] = {}
         self._entity_models: dict[str, Any] = {}
+        self._background_texture: Any | None = None
+        self._menu_chase_scene = MenuChaseScene(self._entity_models)
         self._last_pacman_direction = Direction.DOWN
 
         self._camera: Any = ray.Camera3D(
@@ -99,11 +108,14 @@ class GameView(
         self._window_height = window_height
         ray.init_window(window_width, window_height, WINDOW_TITLE)
         ray.set_exit_key(ray.KeyboardKey.KEY_NULL)
+        self._background_texture = load_arcade_background_texture()
         self._load_wall_models()
         self._load_entity_models()
 
     def shutdown(self) -> None:
         """Close the game window."""
+        unload_arcade_background_texture(self._background_texture)
+        self._background_texture = None
         self._unload_wall_models()
         self._unload_entity_models()
         ray.close_window()
@@ -119,6 +131,13 @@ class GameView(
         phase = model.get_game_phase()
 
         if phase == GamePhase.MAIN_MENU:
+            draw_arcade_background(
+                self._window_width,
+                self._window_height,
+                mode="menu",
+                texture=self._background_texture,
+            )
+            self._draw_main_menu_chase_background()
             self._draw_main_menu(state)
 
         elif phase == GamePhase.HIGHSCORES_MENU:
@@ -155,3 +174,18 @@ class GameView(
                 self._draw_end_screen(model, "YOU WIN!")
 
         ray.end_drawing()
+
+    def _draw_main_menu_chase_background(self) -> None:
+        """Draw the MAIN_MENU-only 3D chase backdrop under 2D UI."""
+        self._menu_chase_scene.update(ray.get_frame_time())
+        self._menu_chase_scene.draw(
+            self._window_width,
+            self._window_height,
+        )
+        ray.draw_rectangle(
+            0,
+            0,
+            self._window_width,
+            self._window_height,
+            MAIN_MENU_CHASE_OVERLAY_COLOR,
+        )

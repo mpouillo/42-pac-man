@@ -26,11 +26,11 @@ PLAYER_NAME_MAX_LENGTH = 10
 
 # UI colors
 BACKGROUND = ray.Color(5, 5, 20, 255)
-BOARD_BACKGROUND = ray.Color(0, 0, 0, 255)
 TEXT_COLOR = ray.Color(240, 240, 240, 255)
 MUTED_TEXT_COLOR = ray.Color(150, 150, 150, 255)
 SELECTED_COLOR = ray.Color(255, 230, 0, 255)
 OVERLAY_COLOR = ray.Color(0, 0, 0, 190)
+MAIN_MENU_CHASE_OVERLAY_COLOR = ray.Color(0, 0, 0, 40)
 ERROR_TEXT_COLOR = ray.Color(255, 80, 80, 255)
 
 # Shared text page typography and layout
@@ -148,6 +148,7 @@ ENTITY_MODEL_FILES = {
     "ghost_pink": "ghost_pink",
     "ghost_cyan": "ghost_cyan",
     "ghost_orange": "ghost_orange",
+    "ghost_frightened": "ghost_frightened",
     "ghost_respawn": "ghost_respawn",
 }
 PACGUM_MODEL_SCALE = 1.0
@@ -156,15 +157,9 @@ GHOST_MODEL_SCALE = 1.0
 PACMAN_MODEL_HEIGHT = 0.35
 GHOST_MODEL_HEIGHT = 0.36
 
-# Ghost animation
-GHOST_TILT_SPEED = 4.5
-GHOST_TILT_DEGREES = 4.0
-RESPAWN_GHOST_TILT_SPEED = 8.0
-RESPAWN_GHOST_TILT_DEGREES = 7.0
-GHOST_RED_TILT_PHASE = 0.0
-GHOST_PINK_TILT_PHASE = 0.7
-GHOST_BLUE_TILT_PHASE = 1.4
-GHOST_ORANGE_TILT_PHASE = 2.1
+# Entity animation
+ENTITY_SWAY_SPEED = 4.5
+ENTITY_SWAY_DEGREES = 10.0
 
 # HUD
 HUD_HORIZONTAL_PADDING = 24

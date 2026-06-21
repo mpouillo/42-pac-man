@@ -6,7 +6,6 @@ from typing import Any
 import pyray as ray
 
 from src.constants import (
-    BOARD_BACKGROUND,
     CELL_SIZE_3D,
     HUD_FONT_SIZE,
     HUD_HORIZONTAL_PADDING,
@@ -20,6 +19,7 @@ from src.constants import (
 )
 from src.types.enums import CellState
 from src.types.protocols import ModelProtocol
+from src.view.background import draw_arcade_background
 from src.view.entities_3d import Entity3DRendererMixin
 from src.view.fov import FovRendererMixin
 from src.view.wall_shapes import WallAssetKind, get_wall_asset_kind
@@ -35,15 +35,22 @@ class Scene3DRendererMixin(Entity3DRendererMixin, FovRendererMixin):
     _camera: Any
     _wall_models: dict[WallAssetKind, tuple[Any, Any]]
     _entity_models: dict[str, Any]
+    _background_texture: Any | None
 
     def _draw_game(self, model: ModelProtocol) -> None:
         """Draw gameplay screen."""
+        draw_arcade_background(
+            self._window_width,
+            self._window_height,
+            mode="game",
+            texture=self._background_texture,
+        )
+
         grid = model.get_grid()
         pacman = model.get_pacman()
         ghosts = model.get_ghosts()
 
         ray.begin_mode_3d(self._camera)
-        self._draw_3d_floor(grid)
         self._draw_3d_grid(grid)
         self._draw_3d_pacman(pacman, grid)
 
@@ -72,23 +79,6 @@ class Scene3DRendererMixin(Entity3DRendererMixin, FovRendererMixin):
         world_z = centered_z * CELL_SIZE_3D
 
         return ray.Vector3(world_x, height, world_z)
-
-    def _draw_3d_floor(self, grid: list[list[CellState]]) -> None:
-        """Draw the 3D floor under the maze."""
-        if not grid or not grid[0]:
-            return
-
-        rows = len(grid)
-        cols = len(grid[0])
-
-        width = cols * CELL_SIZE_3D
-        depth = rows * CELL_SIZE_3D
-
-        ray.draw_plane(
-            ray.Vector3(0.0, 0.0, 0.0),
-            ray.Vector2(width, depth),
-            BOARD_BACKGROUND,
-        )
 
     def _load_wall_models(self) -> None:
         """Load all wall models once."""

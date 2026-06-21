@@ -1,6 +1,5 @@
 """Pac-Man, pacgum, and ghost rendering for the 3D scene."""
 
-import math
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -11,22 +10,17 @@ from src.constants import (
     ENTITY_MODEL_DIR,
     ENTITY_MODEL_EXTENSION,
     ENTITY_MODEL_FILES,
-    GHOST_BLUE_TILT_PHASE,
+    ENTITY_SWAY_DEGREES,
+    ENTITY_SWAY_SPEED,
     GHOST_MODEL_HEIGHT,
     GHOST_MODEL_SCALE,
-    GHOST_ORANGE_TILT_PHASE,
-    GHOST_PINK_TILT_PHASE,
-    GHOST_RED_TILT_PHASE,
-    GHOST_TILT_DEGREES,
-    GHOST_TILT_SPEED,
     PACGUM_MODEL_SCALE,
     PACMAN_MODEL_HEIGHT,
     PACMAN_MODEL_SCALE,
-    RESPAWN_GHOST_TILT_DEGREES,
-    RESPAWN_GHOST_TILT_SPEED,
 )
 from src.types.dataclasses import GhostData
 from src.types.enums import CellState, Direction, GhostState, GhostType
+from src.view.entity_orientation import yaw_sway_rotation
 
 
 class Entity3DRendererMixin:
@@ -113,11 +107,13 @@ class Entity3DRendererMixin:
         scale: float,
     ) -> None:
         """Draw the Pac-Man model with the shared orientation rules."""
+        rotation_axis, rotation_angle = self._entity_rotation(direction)
+
         ray.draw_model_ex(
             self._entity_models["pacman"],
             position,
-            ray.Vector3(0.0, 1.0, 0.0),
-            self._direction_to_rotation(direction),
+            rotation_axis,
+            rotation_angle,
             ray.Vector3(
                 scale,
                 scale,
@@ -169,7 +165,7 @@ class Entity3DRendererMixin:
             return "ghost_respawn"
 
         if ghost.state in (GhostState.FRIGHTENED, GhostState.FLASHING):
-            return "ghost_cyan"
+            return "ghost_frightened"
 
         match ghost.type:
             case GhostType.RED:
@@ -183,124 +179,17 @@ class Entity3DRendererMixin:
         raise ValueError(f"Unsupported ghost type: {ghost.type}")
 
     def _ghost_rotation(self, ghost: GhostData) -> tuple[Any, float]:
-        """Return one axis-angle rotation combining facing and runtime tilt."""
-        facing_angle = self._direction_to_rotation(ghost.direction)
+        """Return one axis-angle rotation for a swaying ghost."""
+        return self._entity_rotation(ghost.direction)
 
-        if ghost.state == GhostState.EATEN:
-            tilt_angle = self._respawn_ghost_tilt(ghost)
-        else:
-            tilt_angle = self._ghost_tilt(ghost)
-
-        return self._combined_yaw_roll_rotation(facing_angle, tilt_angle)
-
-    def _ghost_tilt(self, ghost: GhostData) -> float:
-        """Return smooth left/right tilt for a normal ghost."""
+    def _entity_rotation(self, direction: Direction) -> tuple[Any, float]:
+        """Return shared facing plus left/right turn sway for entities."""
         return (
-            math.sin(
-                ray.get_time() * GHOST_TILT_SPEED + self._ghost_phase(ghost)
-            )
-            * GHOST_TILT_DEGREES
+            ray.Vector3(0.0, 1.0, 0.0),
+            yaw_sway_rotation(
+                direction,
+                ray.get_time(),
+                ENTITY_SWAY_SPEED,
+                ENTITY_SWAY_DEGREES,
+            ),
         )
-
-    def _respawn_ghost_tilt(self, ghost: GhostData) -> float:
-        """Return a quicker tilt for the dashed respawn ghost."""
-        return (
-            math.sin(
-                ray.get_time() * RESPAWN_GHOST_TILT_SPEED
-                + self._ghost_phase(ghost)
-            )
-            * RESPAWN_GHOST_TILT_DEGREES
-        )
-
-    def _ghost_phase(self, ghost: GhostData) -> float:
-        """Return animation offset so ghosts do not sway together."""
-        match ghost.type:
-            case GhostType.RED:
-                return GHOST_RED_TILT_PHASE
-            case GhostType.PINK:
-                return GHOST_PINK_TILT_PHASE
-            case GhostType.BLUE:
-                return GHOST_BLUE_TILT_PHASE
-            case GhostType.ORANGE:
-                return GHOST_ORANGE_TILT_PHASE
-        return 0.0
-
-    def _combined_yaw_roll_rotation(
-        self,
-        yaw_degrees: float,
-        roll_degrees: float,
-    ) -> tuple[Any, float]:
-        """Combine direction yaw and local sideways tilt."""
-        yaw = math.radians(yaw_degrees) / 2.0
-        roll = math.radians(roll_degrees) / 2.0
-
-        yaw_quaternion = (math.cos(yaw), 0.0, math.sin(yaw), 0.0)
-        roll_quaternion = (math.cos(roll), 0.0, 0.0, math.sin(roll))
-
-        w, x, y, z = self._multiply_quaternions(
-            yaw_quaternion,
-            roll_quaternion,
-        )
-
-        length = math.sqrt(w * w + x * x + y * y + z * z)
-        if length == 0.0:
-            return ray.Vector3(0.0, 1.0, 0.0), 0.0
-
-        w /= length
-        x /= length
-        y /= length
-        z /= length
-
-        w = max(-1.0, min(1.0, w))
-        angle = math.degrees(2.0 * math.acos(w))
-        axis_scale = math.sqrt(max(0.0, 1.0 - w * w))
-
-        if axis_scale < 0.0001:
-            return ray.Vector3(0.0, 1.0, 0.0), 0.0
-
-        return ray.Vector3(
-            x / axis_scale,
-            y / axis_scale,
-            z / axis_scale,
-        ), angle
-
-    def _multiply_quaternions(
-        self,
-        first: tuple[float, float, float, float],
-        second: tuple[float, float, float, float],
-    ) -> tuple[float, float, float, float]:
-        """Return first * second for quaternions stored as w, x, y, z."""
-        first_w, first_x, first_y, first_z = first
-        second_w, second_x, second_y, second_z = second
-
-        return (
-            first_w * second_w
-            - first_x * second_x
-            - first_y * second_y
-            - first_z * second_z,
-            first_w * second_x
-            + first_x * second_w
-            + first_y * second_z
-            - first_z * second_y,
-            first_w * second_y
-            - first_x * second_z
-            + first_y * second_w
-            + first_z * second_x,
-            first_w * second_z
-            + first_x * second_y
-            - first_y * second_x
-            + first_z * second_w,
-        )
-
-    def _direction_to_rotation(self, direction: Direction) -> float:
-        """Return model Y-axis rotation from entity direction."""
-        match direction:
-            case Direction.RIGHT:
-                return 90.0
-            case Direction.UP:
-                return 180.0
-            case Direction.LEFT:
-                return 270.0
-            case Direction.DOWN | Direction.NONE:
-                return 0.0
-        return 0.0

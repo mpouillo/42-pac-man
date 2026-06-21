@@ -380,14 +380,14 @@ class Scene3DRendererMixin:
 
         return self._combined_yaw_roll_rotation(facing_angle, tilt_angle)
 
-
     def _ghost_tilt(self, ghost: GhostData) -> float:
         """Return smooth left/right tilt for a normal ghost."""
         return (
-            math.sin(ray.get_time() * GHOST_TILT_SPEED + self._ghost_phase(ghost))
+            math.sin(
+                ray.get_time() * GHOST_TILT_SPEED + self._ghost_phase(ghost)
+            )
             * GHOST_TILT_DEGREES
         )
-
 
     def _respawn_ghost_tilt(self, ghost: GhostData) -> float:
         """Return a quicker tilt for the dashed respawn ghost."""
@@ -398,7 +398,6 @@ class Scene3DRendererMixin:
             )
             * RESPAWN_GHOST_TILT_DEGREES
         )
-
 
     def _ghost_phase(self, ghost: GhostData) -> float:
         """Return animation offset so ghosts do not sway together."""
@@ -411,13 +410,12 @@ class Scene3DRendererMixin:
 
         return phases.get(ghost.type, 0.0)
 
-
     def _combined_yaw_roll_rotation(
         self,
         yaw_degrees: float,
         roll_degrees: float,
     ) -> tuple[Any, float]:
-        """Combine direction yaw and local sideways tilt into one axis-angle."""
+        """Combine direction yaw and local sideways tilt."""
         yaw = math.radians(yaw_degrees) / 2.0
         roll = math.radians(roll_degrees) / 2.0
 
@@ -450,7 +448,6 @@ class Scene3DRendererMixin:
             y / axis_scale,
             z / axis_scale,
         ), angle
-
 
     def _multiply_quaternions(
         self,

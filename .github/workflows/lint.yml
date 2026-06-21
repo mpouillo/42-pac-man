@@ -24,7 +24,7 @@ jobs:
       - name: Install linting frameworks
         run: |
           python3 -m pip install --upgrade pip
-          python3 -m pip install flake8 mypy
+          python3 -m pip install flake8 mypy pydantic
 
       - name: Flake8 check
         run:  python3 -m flake8 .

@@ -140,7 +140,7 @@ class GameModel(ModelProtocol):
         self._level_id += 1
         self._level = Level(self._config.levels[self._level_id])
         self._reset()
-        
+
     def _lose_round(self) -> None:
         self._lives -= 1
         self._reset()

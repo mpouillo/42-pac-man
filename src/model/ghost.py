@@ -1,5 +1,6 @@
 import heapq
 import math
+from typing import Any, Dict, List
 
 from src.constants import GHOST_FLASH_THRESHOLD, SPEED_FACTOR
 from src.model.level import Level
@@ -247,10 +248,10 @@ class Ghost:
         def heuristic(a: Coordinates, b: Coordinates) -> int:
             return abs(b[0] - a[0]) + abs(b[1] - a[1])
 
-        open_list = []
+        open_list: List[Any] = []
         heapq.heappush(open_list, (0 + heuristic(start, goal), start))
 
-        came_from = {}
+        came_from: Dict[Any, Any] = {}
         g_score = {start: 0}
 
         while open_list:

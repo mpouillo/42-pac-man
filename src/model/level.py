@@ -3,7 +3,7 @@ from typing import Any, Dict, List
 
 from mazegenerator import MazeGenerator
 from pydantic import BaseModel, field_validator
-from src.types.enums import CellState, GhostState, GhostType
+from src.types.enums import CellState, GhostType
 
 
 class Position(BaseModel):

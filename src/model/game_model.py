@@ -148,9 +148,12 @@ class GameModel(ModelProtocol):
             return
 
     def _win_round(self) -> None:
-        self._score += int(self._level_timer) * 100
+        """Transition the game phase on win or advance to the next level."""
+        self._score += int(
+            self._level_timer
+            * self._config.points_per_second_left
+        )
 
-        # If at last level
         if self._level_id >= len(self._config.levels) - 1:
             self._phase = GamePhase.WIN
             return

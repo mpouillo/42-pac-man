@@ -7,11 +7,11 @@ class ConfigData(BaseModel):
 
     highscores: str
     levels: list[FilePath]
-    lives: int
-    points_per_pacgum: int
-    points_per_super_pacgum: int
-    points_per_ghost: int
-    points_per_second_left: int
+    lives: int = Field(..., gt=0)
+    points_per_pacgum: int = Field(..., ge=0)
+    points_per_super_pacgum: int = Field(..., ge=0)
+    points_per_ghost: int = Field(..., ge=0)
+    points_per_second_left: int = Field(..., ge=0)
 
 
 def load_config(file_path: str) -> ConfigData:

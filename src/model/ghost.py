@@ -49,7 +49,6 @@ class Ghost:
 
     def chase(self) -> None:
         """Change the ghost behavior state to actively hunt Pac-Man."""
-        print(self.type, "is chasing")
         self.state = GhostState.CHASE
         self._speed = self._base_speed * 1.5
         self._timer = 20.0
@@ -57,7 +56,6 @@ class Ghost:
 
     def scatter(self) -> None:
         """Change the ghost behavior state to target its home corner corner."""
-        print(self.type, "is scattering")
         self.state = GhostState.SCATTER
         self._speed = self._base_speed * 1.5
         self._timer = 5.0
@@ -65,7 +63,6 @@ class Ghost:
 
     def frighten(self, duration: float, pacman: PacmanData) -> None:
         """Frighten the ghost and direct them away from Pac-Man."""
-        print(self.type, "is frightened")
         self.state = GhostState.FRIGHTENED
         self._speed = self._base_speed
         self._timer = duration
@@ -79,7 +76,6 @@ class Ghost:
 
     def die(self) -> None:
         """Kill the ghost and initiate its recovery return to spawn."""
-        print(self.type, "is eaten")
         self.state = GhostState.EATEN
         self._speed = self._base_speed * 2
         self._timer = 0.0
@@ -131,20 +127,13 @@ class Ghost:
         return (1, 1)
 
     def _snap_to_cells(self, delta_time: float) -> None:
-        """Snap to center of cells if boundary is crossed this frame."""
+        """Snap Ghost to the nearest cell center when crossing a boundary."""
         step_x = self.direction.value[0] * self._speed * delta_time
         step_y = self.direction.value[1] * self._speed * delta_time
-
         if step_x != 0 and math.floor(self.x) != math.floor(self.x + step_x):
-            self.x = float(
-                math.floor(self.x + step_x) if step_x > 0
-                else math.ceil(self.x + step_x)
-            )
+            self.x = float(round(self.x))
         if step_y != 0 and math.floor(self.y) != math.floor(self.y + step_y):
-            self.y = float(
-                math.floor(self.y + step_y) if step_y > 0
-                else math.ceil(self.y + step_y)
-            )
+            self.y = float(round(self.y))
 
     def _update_state_timers(self, delta_time: float) -> None:
         """Decrement active state durations and process transitions."""

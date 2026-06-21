@@ -1,7 +1,5 @@
 import heapq
 import math
-from typing import Any, Dict, List
-
 from typing import Any
 
 from src.constants import GHOST_FLASH_THRESHOLD, SPEED_FACTOR
@@ -13,7 +11,10 @@ Coordinates = tuple[int, int]   # (x, y)
 
 
 class Ghost:
+    """Represent a ghost enemy NPC with specialized AI and pathfinding."""
+
     def __init__(self, ghost_type: GhostType, level: Level) -> None:
+        """Initialize the ghost entity with map positioning and settings."""
         self.type: GhostType = ghost_type
         self._level: Level = level
 
@@ -47,6 +48,7 @@ class Ghost:
         )
 
     def chase(self) -> None:
+        """Change the ghost behavior state to actively hunt Pac-Man."""
         print(self.type, "is chasing")
         self.state = GhostState.CHASE
         self._speed = self._base_speed * 1.5
@@ -54,6 +56,7 @@ class Ghost:
         self._path = []
 
     def scatter(self) -> None:
+        """Change the ghost behavior state to target its home corner corner."""
         print(self.type, "is scattering")
         self.state = GhostState.SCATTER
         self._speed = self._base_speed * 1.5
@@ -61,6 +64,7 @@ class Ghost:
         self._path = []
 
     def frighten(self, duration: float, pacman: PacmanData) -> None:
+        """Frighten the ghost and direct them away from Pac-Man."""
         print(self.type, "is frightened")
         self.state = GhostState.FRIGHTENED
         self._speed = self._base_speed
@@ -74,6 +78,7 @@ class Ghost:
             self.direction = self.direction.opposite
 
     def die(self) -> None:
+        """Kill the ghost and initiate its recovery return to spawn."""
         print(self.type, "is eaten")
         self.state = GhostState.EATEN
         self._speed = self._base_speed * 2
@@ -88,8 +93,9 @@ class Ghost:
         self,
         delta_time: float,
         pacman: PacmanData,
-        red_ghost: GhostData
+        red_ghost: GhostData | None
     ) -> None:
+        """Execute step-based position changes and handle targets."""
         self._snap_to_cells(delta_time)
         self._update_state_timers(delta_time)
 
@@ -113,6 +119,7 @@ class Ghost:
         self.y += self.direction.value[1] * self._speed * delta_time
 
     def _init_scatter_target(self) -> Coordinates:
+        """Assign fixed coordinates for target zones based on personality."""
         if self.type == GhostType.RED:
             return (self._level.width - 2, 1)
         elif self.type == GhostType.PINK:
@@ -140,6 +147,7 @@ class Ghost:
             )
 
     def _update_state_timers(self, delta_time: float) -> None:
+        """Decrement active state durations and process transitions."""
         if self._timer > 0:
             self._timer -= delta_time
 
@@ -149,19 +157,18 @@ class Ghost:
         elif self.state == GhostState.SCATTER and self._timer <= 0:
             self.chase()
 
-        elif self.state == GhostState.FRIGHTENED:
+        elif self.state in [GhostState.FRIGHTENED, GhostState.FLASHING]:
             if self._timer <= GHOST_FLASH_THRESHOLD:
                 self.state = GhostState.FLASHING
-
-        elif self.state in [GhostState.FRIGHTENED, GhostState.FLASHING]:
             if self._timer <= 0:
                 self.scatter()
 
     def _compute_target(
         self,
         pacman: PacmanData,
-        red_ghost: GhostData
+        red_ghost: GhostData | None
     ) -> None:
+        """Calculate coordinate navigation objectives based on AI state."""
         if self.state == GhostState.SCATTER:
             self._pathfind_to(self._scatter_target)
             return
@@ -199,14 +206,15 @@ class Ghost:
         elif self.type == GhostType.BLUE:
             front_x = pac_x + (pacman.direction.value[0] * 2)
             front_y = pac_y + (pacman.direction.value[1] * 2)
-            vec_x = front_x - round(red_ghost.x)
-            vec_y = front_y - round(red_ghost.y)
+            vec_x = front_x - (round(red_ghost.x) if red_ghost else 0)
+            vec_y = front_y - (round(red_ghost.y) if red_ghost else 0)
             self._target = (
                 max(0, min(front_x + vec_x, self._level.width - 1)),
                 max(0, min(front_y + vec_y, self._level.height - 1))
             )
 
     def _pathfind_to(self, destination: Coordinates) -> None:
+        """Pop the next step from an active path or generate a new A* path."""
         if not self._path or (self.x, self.y) != self._target:
             self._path = self._astar((round(self.x), round(self.y)),
                                      destination)
@@ -221,6 +229,7 @@ class Ghost:
         target: Coordinates,
         reverse_allowed: bool = False
     ) -> Direction:
+        """Select the optimal valid direction towards a target."""
         cx, cy = int(self.x), int(self.y)
         choices = Direction.best_from_points((cx, cy), target)
 
@@ -243,7 +252,7 @@ class Ghost:
         start: Coordinates,
         goal: Coordinates
     ) -> list[Coordinates]:
-
+        """Perform an A* search algorithm between start and goal."""
         if start == goal:
             return [goal]
 
@@ -255,9 +264,14 @@ class Ghost:
 
         came_from: dict[Any, Any] = {}
         g_score = {start: 0}
+        closed_set = set()
 
         while open_list:
             _, current = heapq.heappop(open_list)
+
+            if current in closed_set:
+                continue
+            closed_set.add(current)
 
             if current == goal:
                 path = []

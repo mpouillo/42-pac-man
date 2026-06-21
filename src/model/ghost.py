@@ -127,20 +127,13 @@ class Ghost:
         return (1, 1)
 
     def _snap_to_cells(self, delta_time: float) -> None:
-        """Snap to center of cells if boundary is crossed this frame."""
+        """Snap Ghost to the nearest cell center when crossing a boundary."""
         step_x = self.direction.value[0] * self._speed * delta_time
         step_y = self.direction.value[1] * self._speed * delta_time
-
         if step_x != 0 and math.floor(self.x) != math.floor(self.x + step_x):
-            self.x = float(
-                math.floor(self.x + step_x) if step_x > 0
-                else math.ceil(self.x + step_x)
-            )
+            self.x = float(round(self.x))
         if step_y != 0 and math.floor(self.y) != math.floor(self.y + step_y):
-            self.y = float(
-                math.floor(self.y + step_y) if step_y > 0
-                else math.ceil(self.y + step_y)
-            )
+            self.y = float(round(self.y))
 
     def _update_state_timers(self, delta_time: float) -> None:
         """Decrement active state durations and process transitions."""

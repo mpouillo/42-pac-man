@@ -4,7 +4,7 @@ from typing import Any
 
 import pyray as ray
 
-from src.view.constants import (
+from src.constants import (
     INFO_CONTENT_OFFSET,
     INFO_PAGE_START_Y_RATIO,
 )

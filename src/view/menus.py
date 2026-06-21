@@ -1,49 +1,44 @@
 """Main and pause menu rendering."""
 
+from collections.abc import Sequence
 from typing import Any, Callable
 
 import pyray as ray
 
-from src.view.constants import (
+from src.constants import (
     CONTENT_FONT_SIZE,
     INFO_CONTENT_OFFSET,
+    MAIN_MENU_OPTIONS,
+    MENU_FOOTER_BOTTOM_OFFSET,
     MENU_ITEM_SPACING,
     MUTED_TEXT_COLOR,
     OVERLAY_COLOR,
+    PAUSE_MENU_OPTION_TEMPLATES,
     SELECTED_COLOR,
     TEXT_COLOR,
     TITLE_FONT_SIZE,
 )
-
-
-def main_menu_options() -> list[str]:
-    """Return the shared main menu labels."""
-    return [
-        "Start Game",
-        "Highscores",
-        "Instructions",
-        "Exit",
-    ]
+from src.view.state import ViewState
 
 
 def pause_menu_options(
     invincibility_enabled: bool,
     ghost_freeze_enabled: bool,
     speed_boost_enabled: bool,
-) -> list[str]:
+) -> tuple[str, ...]:
     """Return the shared pause menu labels."""
     invincibility = "ON" if invincibility_enabled else "OFF"
     ghost_freeze = "ON" if ghost_freeze_enabled else "OFF"
     speed_boost = "ON" if speed_boost_enabled else "OFF"
 
-    return [
-        "Resume",
-        f"Invincibility: {invincibility}",
-        f"Ghost Freeze: {ghost_freeze}",
-        f"Speed Boost: {speed_boost}",
-        "Level Skip",
-        "Return to Main Menu",
-    ]
+    return tuple(
+        template.format(
+            invincibility=invincibility,
+            ghost_freeze=ghost_freeze,
+            speed_boost=speed_boost,
+        )
+        for template in PAUSE_MENU_OPTION_TEMPLATES
+    )
 
 
 class MenuRendererMixin:
@@ -51,24 +46,19 @@ class MenuRendererMixin:
 
     _window_width: int
     _window_height: int
-    _main_menu_index: int
-    _pause_menu_index: int
-    _invincibility_enabled: bool
-    _ghost_freeze_enabled: bool
-    _speed_boost_enabled: bool
     _draw_centered_text: Callable[[str, int, int, Any], None]
     _info_page_start_y: Callable[[], int]
 
-    def _draw_main_menu(self) -> None:
+    def _draw_main_menu(self, state: ViewState) -> None:
         """Draw the main menu."""
         self._draw_menu(
             title="Pac-Man",
-            options=main_menu_options(),
-            selected_index=self._main_menu_index,
+            options=MAIN_MENU_OPTIONS,
+            selected_index=state.main_menu_index,
             footer="Enter/click: select",
         )
 
-    def _draw_pause_menu(self) -> None:
+    def _draw_pause_menu(self, state: ViewState) -> None:
         """Draw the pause menu over the game."""
         ray.draw_rectangle(
             0,
@@ -81,18 +71,18 @@ class MenuRendererMixin:
         self._draw_menu(
             title="Paused",
             options=pause_menu_options(
-                self._invincibility_enabled,
-                self._ghost_freeze_enabled,
-                self._speed_boost_enabled,
+                state.invincibility_enabled,
+                state.ghost_freeze_enabled,
+                state.speed_boost_enabled,
             ),
-            selected_index=self._pause_menu_index,
+            selected_index=state.pause_menu_index,
             footer="Escape: resume   Enter: select",
         )
 
     def _draw_menu(
         self,
         title: str,
-        options: list[str],
+        options: Sequence[str],
         selected_index: int,
         footer: str,
     ) -> None:
@@ -129,7 +119,7 @@ class MenuRendererMixin:
 
         self._draw_centered_text(
             footer,
-            self._window_height - 90,
+            self._window_height - MENU_FOOTER_BOTTOM_OFFSET,
             CONTENT_FONT_SIZE,
             MUTED_TEXT_COLOR,
         )

@@ -12,7 +12,7 @@ WALL_LEFT = 8
 
 
 class WallAssetKind(Enum):
-    """Wall asset type with final direction already included."""
+    """Identify wall model shapes with their final direction."""
 
     ISOLATED = "isolated"
 
@@ -37,7 +37,7 @@ class WallAssetKind(Enum):
     CROSS = "cross"
 
 
-WALL_ASSET_BY_MASK = {
+_WALL_ASSET_BY_MASK = {
     0: WallAssetKind.ISOLATED,
     WALL_UP: WallAssetKind.END_UP,
     WALL_RIGHT: WallAssetKind.END_RIGHT,
@@ -98,4 +98,4 @@ def get_wall_asset_kind(
 ) -> WallAssetKind:
     """Return the wall asset matching neighboring walls."""
     mask = get_wall_mask(grid, x, y)
-    return WALL_ASSET_BY_MASK[mask]
+    return _WALL_ASSET_BY_MASK[mask]

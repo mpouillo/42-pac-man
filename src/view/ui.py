@@ -4,12 +4,21 @@ from typing import Any
 
 import pyray as ray
 
+from src.constants import (
+    BACKGROUND,
+    CAMERA_POSITION,
+    CAMERA_TARGET,
+    CAMERA_UP,
+    DEFAULT_FOV,
+    OVERLAY_COLOR,
+    WINDOW_TITLE,
+)
 from src.types.enums import GamePhase
 from src.types.protocols import ModelProtocol
-from src.view.constants import BACKGROUND, OVERLAY_COLOR
 from src.view.menus import MenuRendererMixin
 from src.view.pages import PageRendererMixin
 from src.view.scene_3d import Scene3DRendererMixin
+from src.view.state import ViewState
 from src.view.text import TextRendererMixin
 from src.view.wall_shapes import WallAssetKind
 
@@ -26,28 +35,15 @@ class GameView(
         """Initialize UI state, camera, and unloaded assets."""
         self._window_width = 0
         self._window_height = 0
-        self._main_menu_index = 0
-        self._pause_menu_index = 0
-        self._invincibility_enabled = False
-        self._ghost_freeze_enabled = False
-        self._speed_boost_enabled = False
-
-        self._pending_player_name = ""
-        self._name_error = ""
-        self._score_entry_open = False
-        self._score_entry_saved = False
-
-        self._cell_size_3d = 1.0
-        self._wall_height_3d = 0.8
-        self._fov = 100.0
+        self._fov = DEFAULT_FOV
         self._auto_fov_enabled = True
-        self._wall_models: dict[WallAssetKind, Any] = {}
+        self._wall_models: dict[WallAssetKind, tuple[Any, Any]] = {}
         self._entity_models: dict[str, Any] = {}
 
         self._camera: Any = ray.Camera3D(
-            ray.Vector3(0.0, 15.0, 20.0),
-            ray.Vector3(0.0, 0.0, 0.0),
-            ray.Vector3(0.0, 1.0, 0.0),
+            ray.Vector3(*CAMERA_POSITION),
+            ray.Vector3(*CAMERA_TARGET),
+            ray.Vector3(*CAMERA_UP),
             self._fov,
             ray.CameraProjection.CAMERA_PERSPECTIVE,
         )
@@ -57,7 +53,7 @@ class GameView(
         ray.set_trace_log_level(ray.LOG_ERROR)
         self._window_width = window_width
         self._window_height = window_height
-        ray.init_window(window_width, window_height, "Pac-Man")
+        ray.init_window(window_width, window_height, WINDOW_TITLE)
         ray.set_exit_key(ray.KeyboardKey.KEY_NULL)
         self._load_wall_models()
         self._load_entity_models()
@@ -68,30 +64,7 @@ class GameView(
         self._unload_entity_models()
         ray.close_window()
 
-    def set_ui_state(
-        self,
-        main_menu_index: int,
-        pause_menu_index: int,
-        invincibility_enabled: bool = False,
-        ghost_freeze_enabled: bool = False,
-        speed_boost_enabled: bool = False,
-        pending_player_name: str = "",
-        name_error: str = "",
-        score_entry_open: bool = False,
-        score_entry_saved: bool = False,
-    ) -> None:
-        """Receive UI-only state from the controller."""
-        self._main_menu_index = main_menu_index
-        self._pause_menu_index = pause_menu_index
-        self._invincibility_enabled = invincibility_enabled
-        self._ghost_freeze_enabled = ghost_freeze_enabled
-        self._speed_boost_enabled = speed_boost_enabled
-        self._pending_player_name = pending_player_name
-        self._name_error = name_error
-        self._score_entry_open = score_entry_open
-        self._score_entry_saved = score_entry_saved
-
-    def render(self, model: ModelProtocol) -> None:
+    def render(self, model: ModelProtocol, state: ViewState) -> None:
         """Render one frame."""
         self._window_width = ray.get_screen_width()
         self._window_height = ray.get_screen_height()
@@ -102,7 +75,7 @@ class GameView(
         phase = model.get_game_phase()
 
         if phase == GamePhase.MAIN_MENU:
-            self._draw_main_menu()
+            self._draw_main_menu(state)
 
         elif phase == GamePhase.HIGHSCORES_MENU:
             self._draw_highscores(model)
@@ -115,11 +88,11 @@ class GameView(
 
         elif phase == GamePhase.PAUSED:
             self._draw_game(model)
-            self._draw_pause_menu()
+            self._draw_pause_menu(state)
 
         elif phase == GamePhase.GAME_OVER:
-            if self._score_entry_open:
-                self._draw_score_entry_page(model)
+            if state.score_entry_open:
+                self._draw_score_entry_page(model, state)
             else:
                 self._draw_game(model)
                 ray.draw_rectangle(
@@ -132,8 +105,8 @@ class GameView(
                 self._draw_end_screen(model, "GAME OVER")
 
         elif phase == GamePhase.WIN:
-            if self._score_entry_open:
-                self._draw_score_entry_page(model)
+            if state.score_entry_open:
+                self._draw_score_entry_page(model, state)
             else:
                 self._draw_end_screen(model, "YOU WIN!")
 

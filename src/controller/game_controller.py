@@ -1,29 +1,26 @@
-"""Main game controller.
-
-The controller connects input, model and view.
-It does not contain game rules and does not draw directly.
-"""
+"""Main game controller."""
 
 from contextlib import redirect_stdout
 
 import pyray as ray
 
 from src.config import ConfigData
+from src.constants import (
+    END_SCREEN_DISPLAY_SECONDS,
+    MAIN_MENU_OPTIONS,
+    MENU_ITEM_HEIGHT,
+    MENU_ITEM_SPACING,
+    PAUSE_MENU_OPTION_TEMPLATES,
+    PLAYER_NAME_MAX_LENGTH,
+    TARGET_FPS,
+    WINDOW_HEIGHT,
+    WINDOW_WIDTH,
+)
 from src.controller.input import InputState, collect_input
 from src.model.game_model import GameModel
 from src.types.enums import CheatType, Direction, GamePhase
-from src.view.constants import (
-    MENU_ITEM_HEIGHT,
-    MENU_ITEM_SPACING,
-)
-from src.view.menus import main_menu_options, pause_menu_options
+from src.view.state import ViewState
 from src.view.ui import GameView
-
-
-WINDOW_WIDTH = 1920
-WINDOW_HEIGHT = 1080
-TARGET_FPS = 60
-END_SCREEN_DISPLAY_SECONDS = 3.0
 
 
 class GameController:
@@ -37,16 +34,15 @@ class GameController:
         self._running = True
         self._main_menu_index = 0
         self._pause_menu_index = 0
-        self._cheat_states: dict[CheatType, bool] = {
-            CheatType.INVINCIBILITY: False,
-            CheatType.GHOST_FREEZE: False,
-            CheatType.SPEED_BOOST: False,
-        }
-        self._pending_player_name = ""
-        self._name_error = ""
-        self._end_screen_timer = 0.0
-        self._score_entry_open = False
-        self._score_entry_saved = False
+        self._cheat_states: dict[CheatType, bool] = (
+            self._default_cheat_states()
+        )
+        self._end_screen_timer: float
+        self._pending_player_name: str
+        self._name_error: str
+        self._score_entry_open: bool
+        self._score_entry_saved: bool
+        self._reset_end_flow()
         self._last_mouse_position: tuple[int, int] | None = None
 
     def run(self) -> None:
@@ -93,7 +89,7 @@ class GameController:
 
     def _render(self) -> None:
         """Render current frame through the view."""
-        self._view.set_ui_state(
+        state = ViewState(
             main_menu_index=self._main_menu_index,
             pause_menu_index=self._pause_menu_index,
             invincibility_enabled=self._cheat_states[CheatType.INVINCIBILITY],
@@ -104,20 +100,19 @@ class GameController:
             score_entry_open=self._score_entry_open,
             score_entry_saved=self._score_entry_saved,
         )
-        self._view.render(self._model)
+        self._view.render(self._model, state)
 
     def _update_main_menu(self, input_state: InputState) -> None:
         """Handle main menu input."""
-        options = main_menu_options()
         self._main_menu_index = self._move_menu_index(
             self._main_menu_index,
-            len(options),
+            len(MAIN_MENU_OPTIONS),
             input_state,
         )
         self._main_menu_index, mouse_confirmed = self._update_menu_mouse(
             input_state,
             self._main_menu_index,
-            len(options),
+            len(MAIN_MENU_OPTIONS),
         )
 
         if not input_state.confirm and not mouse_confirmed:
@@ -201,17 +196,9 @@ class GameController:
         self._model.set_game_phase(GamePhase.PLAYING)
 
         self._pause_menu_index = 0
-        self._cheat_states = {
-            CheatType.INVINCIBILITY: False,
-            CheatType.GHOST_FREEZE: False,
-            CheatType.SPEED_BOOST: False,
-        }
+        self._cheat_states = self._default_cheat_states()
         self._view.reset_fov()
-        self._end_screen_timer = 0.0
-        self._score_entry_open = False
-        self._score_entry_saved = False
-        self._pending_player_name = ""
-        self._name_error = ""
+        self._reset_end_flow()
 
     def _read_pending_player_name_input(self) -> None:
         """Read username input on the score entry page."""
@@ -220,7 +207,7 @@ class GameController:
         while char_code > 0:
             char = chr(char_code)
 
-            if len(self._pending_player_name) < 10:
+            if len(self._pending_player_name) < PLAYER_NAME_MAX_LENGTH:
                 if char.isalnum() or char == " ":
                     self._pending_player_name += char
                     self._name_error = ""
@@ -259,20 +246,15 @@ class GameController:
 
     def _update_paused(self, input_state: InputState) -> None:
         """Handle pause menu input."""
-        options = pause_menu_options(
-            self._cheat_states[CheatType.INVINCIBILITY],
-            self._cheat_states[CheatType.GHOST_FREEZE],
-            self._cheat_states[CheatType.SPEED_BOOST],
-        )
         self._pause_menu_index = self._move_menu_index(
             self._pause_menu_index,
-            len(options),
+            len(PAUSE_MENU_OPTION_TEMPLATES),
             input_state,
         )
         self._pause_menu_index, mouse_confirmed = self._update_menu_mouse(
             input_state,
             self._pause_menu_index,
-            len(options),
+            len(PAUSE_MENU_OPTION_TEMPLATES),
         )
 
         if input_state.escape:
@@ -327,10 +309,8 @@ class GameController:
 
     def _open_score_entry(self) -> None:
         """Open a fresh score entry page."""
+        self._reset_score_entry_state()
         self._score_entry_open = True
-        self._score_entry_saved = False
-        self._pending_player_name = ""
-        self._name_error = ""
 
     def _update_score_entry(self, input_state: InputState) -> None:
         """Handle username input on the score entry page."""
@@ -365,6 +345,27 @@ class GameController:
             self._cheat_states[cheat] = not self._cheat_states[cheat]
 
         self._model.toggle_cheat(cheat)
+
+    @staticmethod
+    def _default_cheat_states() -> dict[CheatType, bool]:
+        """Return disabled states for all toggleable cheats."""
+        return {
+            CheatType.INVINCIBILITY: False,
+            CheatType.GHOST_FREEZE: False,
+            CheatType.SPEED_BOOST: False,
+        }
+
+    def _reset_end_flow(self) -> None:
+        """Reset end-screen timing and score-entry state."""
+        self._end_screen_timer = 0.0
+        self._reset_score_entry_state()
+
+    def _reset_score_entry_state(self) -> None:
+        """Reset score-entry fields without opening the page."""
+        self._pending_player_name = ""
+        self._name_error = ""
+        self._score_entry_open = False
+        self._score_entry_saved = False
 
     def _get_direction_from_input(
         self,

@@ -20,8 +20,8 @@ from src.view.menus import main_menu_options, pause_menu_options
 from src.view.ui import GameView
 
 
-WINDOW_WIDTH = 2500
-WINDOW_HEIGHT = 1500
+WINDOW_WIDTH = 1920
+WINDOW_HEIGHT = 1080
 TARGET_FPS = 60
 END_SCREEN_DISPLAY_SECONDS = 3.0
 

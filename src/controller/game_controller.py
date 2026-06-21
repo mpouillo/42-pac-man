@@ -19,8 +19,7 @@ from src.constants import (
 from src.controller.input import InputState, collect_input
 from src.model.game_model import GameModel
 from src.types.enums import CheatType, Direction, GamePhase
-from src.view.state import ViewState
-from src.view.ui import GameView
+from src.view.ui import GameView, ViewState
 
 
 class GameController:

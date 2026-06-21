@@ -1,24 +1,32 @@
 """Main and pause menu rendering."""
 
+from __future__ import annotations
+
 from collections.abc import Sequence
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any, Callable
 
 import pyray as ray
 
 from src.constants import (
-    CONTENT_FONT_SIZE,
-    INFO_CONTENT_OFFSET,
+    BACKGROUND,
     MAIN_MENU_OPTIONS,
-    MENU_FOOTER_BOTTOM_OFFSET,
+    MENU_MARKER_GAP,
+    MENU_MARKER_MOUTH_RATIO,
+    MENU_MARKER_SIZE,
     MENU_ITEM_SPACING,
     MUTED_TEXT_COLOR,
     OVERLAY_COLOR,
     PAUSE_MENU_OPTION_TEMPLATES,
     SELECTED_COLOR,
     TEXT_COLOR,
-    TITLE_FONT_SIZE,
+    TEXT_PAGE_BODY_FONT_SIZE,
+    TEXT_PAGE_BODY_TOP_OFFSET,
+    TEXT_PAGE_FOOTER_BOTTOM_OFFSET,
+    TEXT_PAGE_TITLE_FONT_SIZE,
 )
-from src.view.state import ViewState
+
+if TYPE_CHECKING:
+    from src.view.ui import ViewState
 
 
 def pause_menu_options(
@@ -91,35 +99,57 @@ class MenuRendererMixin:
         self._draw_centered_text(
             title,
             start_y,
-            TITLE_FONT_SIZE,
+            TEXT_PAGE_TITLE_FONT_SIZE,
             SELECTED_COLOR,
         )
 
         for index, option in enumerate(options):
             color = SELECTED_COLOR if index == selected_index else TEXT_COLOR
-            item_y = start_y + INFO_CONTENT_OFFSET
+            item_y = start_y + TEXT_PAGE_BODY_TOP_OFFSET
             item_y += index * MENU_ITEM_SPACING
             self._draw_centered_text(
                 option,
                 item_y,
-                CONTENT_FONT_SIZE,
+                TEXT_PAGE_BODY_FONT_SIZE,
                 color,
             )
             if index == selected_index:
-                option_width = ray.measure_text(option, CONTENT_FONT_SIZE)
+                option_width = ray.measure_text(
+                    option,
+                    TEXT_PAGE_BODY_FONT_SIZE,
+                )
                 option_x = (self._window_width - option_width) // 2
-                marker_width = ray.measure_text("> ", CONTENT_FONT_SIZE)
-                ray.draw_text(
-                    "> ",
-                    option_x - marker_width,
+                marker_x = option_x - MENU_MARKER_GAP - MENU_MARKER_SIZE
+                self._draw_pacman_marker(
+                    marker_x,
                     item_y,
-                    CONTENT_FONT_SIZE,
-                    SELECTED_COLOR,
                 )
 
         self._draw_centered_text(
             footer,
-            self._window_height - MENU_FOOTER_BOTTOM_OFFSET,
-            CONTENT_FONT_SIZE,
+            self._window_height - TEXT_PAGE_FOOTER_BOTTOM_OFFSET,
+            TEXT_PAGE_BODY_FONT_SIZE,
             MUTED_TEXT_COLOR,
+        )
+
+    def _draw_pacman_marker(self, x: int, y: int) -> None:
+        """Draw the selected menu marker as a Pac-Man shape."""
+        radius = MENU_MARKER_SIZE / 2
+        center = ray.Vector2(
+            x + radius,
+            y + TEXT_PAGE_BODY_FONT_SIZE / 2,
+        )
+        mouth_height = radius * MENU_MARKER_MOUTH_RATIO
+
+        ray.draw_circle(
+            int(center.x),
+            int(center.y),
+            radius,
+            SELECTED_COLOR,
+        )
+        ray.draw_triangle(
+            center,
+            ray.Vector2(center.x + radius, center.y - mouth_height),
+            ray.Vector2(center.x + radius, center.y + mouth_height),
+            BACKGROUND,
         )

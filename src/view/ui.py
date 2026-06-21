@@ -1,5 +1,6 @@
 """Central Raylib view coordinator for Pac-Man."""
 
+from dataclasses import dataclass
 from typing import Any
 
 import pyray as ray
@@ -11,6 +12,8 @@ from src.constants import (
     CAMERA_UP,
     DEFAULT_FOV,
     OVERLAY_COLOR,
+    TEXT_PAGE_BODY_TOP_OFFSET,
+    TEXT_PAGE_START_Y_RATIO,
     WINDOW_TITLE,
 )
 from src.types.enums import GamePhase
@@ -18,9 +21,49 @@ from src.types.protocols import ModelProtocol
 from src.view.menus import MenuRendererMixin
 from src.view.pages import PageRendererMixin
 from src.view.scene_3d import Scene3DRendererMixin
-from src.view.state import ViewState
-from src.view.text import TextRendererMixin
 from src.view.wall_shapes import WallAssetKind
+
+
+@dataclass(frozen=True)
+class ViewState:
+    """Contain controller-owned state needed for one rendered frame."""
+
+    main_menu_index: int
+    pause_menu_index: int
+    invincibility_enabled: bool
+    ghost_freeze_enabled: bool
+    speed_boost_enabled: bool
+    pending_player_name: str
+    name_error: str
+    score_entry_open: bool
+    score_entry_saved: bool
+
+
+class TextRendererMixin:
+    """Provide shared text drawing and vertical layout helpers."""
+
+    _window_width: int
+    _window_height: int
+
+    def _draw_centered_text(
+        self,
+        text: str,
+        y: int,
+        font_size: int,
+        color: Any,
+    ) -> None:
+        """Draw horizontally centered text."""
+        width = ray.measure_text(text, font_size)
+        x = (self._window_width - width) // 2
+        ray.draw_text(text, x, y, font_size, color)
+
+    def get_menu_start_y(self) -> int:
+        """Return the first menu item position for mouse handling."""
+        return self._info_page_start_y() + TEXT_PAGE_BODY_TOP_OFFSET
+
+    def _info_page_start_y(self) -> int:
+        """Return the shared vertical start for information pages."""
+        return int(self._window_height * TEXT_PAGE_START_Y_RATIO)
 
 
 class GameView(

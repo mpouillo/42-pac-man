@@ -142,3 +142,10 @@ You can manage the project using the provided Makefile:
 
 - [A* Search: A Comprehensive Guide (Medium)](https://medium.com/@tahsinsoyakk/a-search-a-comprehensive-guide-8275ebdf8fae)
 - [TAC380 - Lab 5: Pac-Man](https://itp380.org/Lab05.html)
+- [Toupty - Pac-Man](https://www.toupty.com/jeupacman.html#gsc.tab=0)
+- [raylib](https://www.raylib.com/)
+- [raylib GitHub repository](https://github.com/raysan5/raylib)
+- [raylib subreddit](https://www.reddit.com/r/raylib/new/)
+- [Figma](https://www.figma.com/fr-fr/)
+- [YouTube playlist](https://www.youtube.com/watch?v=RGzj-PF7D74&list=PLwR6ZGPvjVOTIMqUXnqyWaIfQg0xdHNZn)
+- [YouTube video](https://www.youtube.com/watch?v=MgI4Y9Z6LjA)

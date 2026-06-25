@@ -16,6 +16,8 @@ from src.constants import (
     HUD_FONT_SIZE,
     HUD_HORIZONTAL_PADDING,
     HUD_TOP_OFFSET,
+    MAZE_FLOOR_COLOR,
+    MAZE_FLOOR_HEIGHT,
     MODEL_EXTENSION,
     TEXT_COLOR,
     WALL_MODEL_DIR,
@@ -242,7 +244,9 @@ class Scene3DRendererMixin(Entity3DRendererMixin):
         self,
         grid: list[list[CellState]],
     ) -> None:
-        """Draw walls and pacgums in the 3D maze."""
+        """Draw the floor, walls, and pacgums in the 3D maze."""
+        self._draw_3d_floor(grid)
+
         _wall_model, wall_bounds = next(iter(self._wall_models.values()))
         pacgum_height = (
             wall_bounds.max.y - wall_bounds.min.y
@@ -262,6 +266,35 @@ class Scene3DRendererMixin(Entity3DRendererMixin):
                         pacgum_height,
                         is_super=True,
                     )
+
+    def _draw_3d_floor(
+        self,
+        grid: list[list[CellState]],
+    ) -> None:
+        """Draw one floor slab under the whole maze."""
+        if not grid or not grid[0]:
+            return
+
+        rows = len(grid)
+        cols = len(grid[0])
+        if rows < 2 or cols < 2:
+            return
+
+        floor_width = (cols - 1) * CELL_SIZE_3D
+        floor_depth = (rows - 1) * CELL_SIZE_3D
+        floor_center = ray.Vector3(
+            0.0,
+            -MAZE_FLOOR_HEIGHT / 2.0,
+            0.0,
+        )
+
+        ray.draw_cube(
+            floor_center,
+            floor_width,
+            MAZE_FLOOR_HEIGHT,
+            floor_depth,
+            MAZE_FLOOR_COLOR,
+        )
 
     def _draw_hud(self, model: ModelProtocol) -> None:
         """Draw score, lives, level, and timer."""

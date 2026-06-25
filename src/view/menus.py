@@ -1,8 +1,6 @@
 """Main and pause menu rendering."""
 # mypy: disable-error-code="attr-defined,no-untyped-def"
 
-from __future__ import annotations
-
 import math
 from collections.abc import Sequence
 

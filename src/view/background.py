@@ -1,7 +1,5 @@
 """Background image rendering."""
 
-from __future__ import annotations
-
 from typing import Any
 
 import pyray as ray

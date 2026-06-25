@@ -1,7 +1,6 @@
 """Main game controller."""
 
 from collections.abc import Sequence
-from contextlib import redirect_stdout
 
 import pyray as ray
 
@@ -78,8 +77,7 @@ class GameController:
             self._update_paused(input_state)
 
         elif phase == GamePhase.GAME_OVER:
-            with redirect_stdout(None):
-                self._model.update(delta_time)
+            self._model.update(delta_time)
             self._update_end_flow(input_state, delta_time)
 
         elif phase == GamePhase.WIN:
@@ -289,16 +287,12 @@ class GameController:
             self._end_screen_timer += delta_time
 
             if self._end_screen_timer >= END_SCREEN_DISPLAY_SECONDS:
-                self._open_score_entry()
+                self._reset_score_entry_state()
+                self._score_entry_open = True
 
             return
 
         self._update_score_entry(input_state)
-
-    def _open_score_entry(self) -> None:
-        """Open a fresh score entry page."""
-        self._reset_score_entry_state()
-        self._score_entry_open = True
 
     def _update_score_entry(self, input_state: InputState) -> None:
         """Handle username input on the score entry page."""

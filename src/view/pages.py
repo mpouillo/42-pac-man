@@ -1,8 +1,6 @@
 """Highscore, instructions, and end-game page rendering."""
 # mypy: disable-error-code="attr-defined,no-untyped-def"
 
-from __future__ import annotations
-
 from typing import Any
 
 import pyray as ray

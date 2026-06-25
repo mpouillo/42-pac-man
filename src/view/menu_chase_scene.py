@@ -1,7 +1,5 @@
 """Animated 3D chase backdrop for the main menu."""
 
-from __future__ import annotations
-
 import math
 from dataclasses import dataclass
 from typing import Any
@@ -13,7 +11,6 @@ from src.constants import (
     ENTITY_SWAY_SPEED,
     GHOST_MODEL_HEIGHT,
     GHOST_MODEL_SCALE,
-    PACGUM_MODEL_SCALE,
     PACMAN_MODEL_HEIGHT,
     PACMAN_MODEL_SCALE,
 )
@@ -29,12 +26,7 @@ DIRECTION_ROTATIONS = {
 MENU_CHASE_CAMERA_WORLD_HEIGHT = 8.4
 MENU_CHASE_PACMAN_SCALE = PACMAN_MODEL_SCALE * 0.62
 MENU_CHASE_GHOST_SCALE = GHOST_MODEL_SCALE * 0.62
-MENU_CHASE_PELLET_SCALE = PACGUM_MODEL_SCALE * 0.42
-MENU_CHASE_SUPER_PELLET_SCALE = PACGUM_MODEL_SCALE * 0.58
-MENU_CHASE_PELLET_HEIGHT = 0.12
 MENU_CHASE_Z = 3.35
-MENU_CHASE_PELLET_SPACING = 0.72
-MENU_CHASE_PELLET_COUNT = 25
 MENU_CHASE_LEFT = -9.35
 MENU_CHASE_RIGHT = 9.35
 MENU_CHASE_SPEED = 2.1
@@ -85,21 +77,10 @@ class MenuChaseScene:
         """Draw the chase scene directly to the current framebuffer."""
         if window_width <= 0 or window_height <= 0:
             return
-        required_models = {
-            "pacman",
-            "pacgum",
-            "super_pacgum",
-            *MENU_CHASE_GHOSTS,
-        }
-        if not all(
-            key in self._models for key in required_models
-        ):
-            return
 
         self._update_camera_size(window_width, window_height)
 
         ray.begin_mode_3d(self._camera)
-        self._draw_pellets()
         self._draw_chase_train()
         ray.end_mode_3d()
 
@@ -115,31 +96,6 @@ class MenuChaseScene:
             MENU_CHASE_CAMERA_WORLD_HEIGHT,
             width_based_height,
         )
-
-    def _draw_pellets(self) -> None:
-        """Draw one horizontal pellet line as pacgum, pacgum, super."""
-        center_index = (MENU_CHASE_PELLET_COUNT - 1) / 2.0
-        for index in range(MENU_CHASE_PELLET_COUNT):
-            x = (index - center_index) * MENU_CHASE_PELLET_SPACING
-            is_super = index % 3 == 2
-            model_key = "super_pacgum" if is_super else "pacgum"
-            scale = (
-                MENU_CHASE_SUPER_PELLET_SCALE
-                if is_super
-                else MENU_CHASE_PELLET_SCALE
-            )
-            ray.draw_model_ex(
-                self._models[model_key],
-                ray.Vector3(
-                    x,
-                    MENU_CHASE_PELLET_HEIGHT,
-                    MENU_CHASE_Z,
-                ),
-                ray.Vector3(0.0, 1.0, 0.0),
-                0.0,
-                ray.Vector3(scale, scale, scale),
-                ray.WHITE,
-            )
 
     def _draw_chase_train(self) -> None:
         """Draw the alternating ghost-chase and Pac-Man-chase trains."""

@@ -30,7 +30,7 @@ The game must support:
 
 ## Configuration
 
-The configuration file must be formatted asa valid JSON object and contain the following values:
+The configuration file must be formatted as a valid JSON object and contain the following values:
 
 | KEY                           | TYPE          | DESCRIPTION                                                       | EXAMPLE                       |
 | ----------------------------- | ------------- | ----------------------------------------------------------------- | ----------------------------- |
@@ -119,7 +119,7 @@ Contributions:
     - View (`menus.py`, `pages.py`, `scene_3d.py`, `entities_3d.py`, `fov.py`, `ui.py`, `wall_shapes.py`)
     - Controller (`game_controller.py`, `input.py`)
 
-[More details here](/management/timeline.md)
+[More details here](management/timeline.md)
 
 ## Instructions
 

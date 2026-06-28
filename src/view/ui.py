@@ -126,7 +126,18 @@ class GameView(
                 self._window_height,
                 texture=self._background_texture,
             )
-            self._draw_main_menu_chase_background()
+            self._menu_chase_scene.update(ray.get_frame_time())
+            self._menu_chase_scene.draw(
+                self._window_width,
+                self._window_height,
+            )
+            ray.draw_rectangle(
+                0,
+                0,
+                self._window_width,
+                self._window_height,
+                MAIN_MENU_CHASE_OVERLAY_COLOR,
+            )
             self._draw_main_menu(state)
 
         elif phase == GamePhase.HIGHSCORES_MENU:
@@ -174,18 +185,3 @@ class GameView(
             self.screen_shake.start(duration=0.40, strength=0.12)
 
         self._previous_lives = current_lives
-
-    def _draw_main_menu_chase_background(self) -> None:
-        """Draw the MAIN_MENU-only 3D chase backdrop under 2D UI."""
-        self._menu_chase_scene.update(ray.get_frame_time())
-        self._menu_chase_scene.draw(
-            self._window_width,
-            self._window_height,
-        )
-        ray.draw_rectangle(
-            0,
-            0,
-            self._window_width,
-            self._window_height,
-            MAIN_MENU_CHASE_OVERLAY_COLOR,
-        )

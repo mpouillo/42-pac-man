@@ -1,7 +1,6 @@
 """Pac-Man, pacgum, and ghost rendering for the 3D scene."""
 # mypy: disable-error-code=attr-defined
 
-import math
 from typing import Any
 
 import pyray as ray
@@ -9,8 +8,6 @@ import pyray as ray
 from src.constants import (
     ENTITY_MODEL_DIR,
     ENTITY_MODEL_FILES,
-    ENTITY_SWAY_DEGREES,
-    ENTITY_SWAY_SPEED,
     GHOST_MODEL_HEIGHT,
     GHOST_MODEL_SCALE,
     MODEL_EXTENSION,
@@ -20,14 +17,8 @@ from src.constants import (
 )
 from src.types.dataclasses import GhostData
 from src.types.enums import CellState, Direction, GhostState, GhostType
+from src.view.entity_motion import entity_rotation
 
-DIRECTION_ROTATIONS = {
-    Direction.DOWN: 0.0,
-    Direction.NONE: 0.0,
-    Direction.RIGHT: 90.0,
-    Direction.UP: 180.0,
-    Direction.LEFT: 270.0,
-}
 GHOST_VISUAL_OFFSETS = {
     GhostType.RED: (0.15, -0.08),
     GhostType.PINK: (0.05, 0.08),
@@ -64,35 +55,17 @@ class Entity3DRendererMixin:
 
         self._entity_models.clear()
 
-    def _draw_3d_pacgum(
+    def _draw_3d_pacgum_at(
         self,
-        grid_x: int,
-        grid_y: int,
-        grid: list[list[CellState]],
-        height: float,
+        position: Any,
         is_super: bool = False,
     ) -> None:
         """Draw one 3D pacgum or super pacgum."""
         model_key = "super_pacgum" if is_super else "pacgum"
-        model = self._entity_models[model_key]
-        position = self._grid_to_world(
-            float(grid_x),
-            float(grid_y),
-            grid,
-            height,
-        )
-
-        ray.draw_model_ex(
-            model,
+        self._draw_entity_model(
+            model_key,
             position,
-            ray.Vector3(0.0, 1.0, 0.0),
-            0.0,
-            ray.Vector3(
-                PACGUM_MODEL_SCALE,
-                PACGUM_MODEL_SCALE,
-                PACGUM_MODEL_SCALE,
-            ),
-            ray.WHITE,
+            PACGUM_MODEL_SCALE,
         )
 
     def _draw_3d_pacman(
@@ -107,28 +80,21 @@ class Entity3DRendererMixin:
             grid,
             PACMAN_MODEL_HEIGHT,
         )
-        direction = self._pacman_display_direction(pacman.direction)
-        rotation_axis, rotation_angle = self._entity_rotation(direction)
+        if pacman.direction != Direction.NONE:
+            self._last_pacman_direction = pacman.direction
 
-        ray.draw_model_ex(
-            self._entity_models["pacman"],
-            position,
-            rotation_axis,
-            rotation_angle,
-            ray.Vector3(
-                PACMAN_MODEL_SCALE,
-                PACMAN_MODEL_SCALE,
-                PACMAN_MODEL_SCALE,
-            ),
-            ray.WHITE,
+        rotation_axis, rotation_angle = entity_rotation(
+            self._last_pacman_direction,
+            ray.get_time(),
         )
 
-    def _pacman_display_direction(self, direction: Direction) -> Direction:
-        """Keep Pac-Man facing the last movement direction when stopped."""
-        if direction != Direction.NONE:
-            self._last_pacman_direction = direction
-
-        return self._last_pacman_direction
+        self._draw_entity_model(
+            "pacman",
+            position,
+            PACMAN_MODEL_SCALE,
+            rotation_axis,
+            rotation_angle,
+        )
 
     def _draw_3d_ghost(
         self,
@@ -137,7 +103,6 @@ class Entity3DRendererMixin:
     ) -> None:
         """Draw one ghost in 3D."""
         model_key = self._ghost_model_key(ghost)
-        model = self._entity_models[model_key]
         position = self._grid_to_world(
             ghost.x,
             ghost.y,
@@ -148,19 +113,17 @@ class Entity3DRendererMixin:
         position.x += offset_x
         position.z += offset_z
 
-        rotation_axis, rotation_angle = self._entity_rotation(ghost.direction)
+        rotation_axis, rotation_angle = entity_rotation(
+            ghost.direction,
+            ray.get_time(),
+        )
 
-        ray.draw_model_ex(
-            model,
+        self._draw_entity_model(
+            model_key,
             position,
+            GHOST_MODEL_SCALE,
             rotation_axis,
             rotation_angle,
-            ray.Vector3(
-                GHOST_MODEL_SCALE,
-                GHOST_MODEL_SCALE,
-                GHOST_MODEL_SCALE,
-            ),
-            ray.WHITE,
         )
 
     def _ghost_model_key(self, ghost: GhostData) -> str:
@@ -173,14 +136,23 @@ class Entity3DRendererMixin:
 
         return GHOST_MODEL_KEYS[ghost.type]
 
-    def _entity_rotation(self, direction: Direction) -> tuple[Any, float]:
-        """Return shared facing plus left/right turn sway for entities."""
-        base_angle = DIRECTION_ROTATIONS.get(direction, 0.0)
-        sway = (
-            math.sin(ray.get_time() * ENTITY_SWAY_SPEED)
-            * ENTITY_SWAY_DEGREES
-        )
-        return (
-            ray.Vector3(0.0, 1.0, 0.0),
-            base_angle + sway,
+    def _draw_entity_model(
+        self,
+        model_key: str,
+        position: Any,
+        scale: float,
+        rotation_axis: Any | None = None,
+        rotation_angle: float = 0.0,
+    ) -> None:
+        """Draw one loaded entity model with uniform scale."""
+        if rotation_axis is None:
+            rotation_axis = ray.Vector3(0.0, 1.0, 0.0)
+
+        ray.draw_model_ex(
+            self._entity_models[model_key],
+            position,
+            rotation_axis,
+            rotation_angle,
+            ray.Vector3(scale, scale, scale),
+            ray.WHITE,
         )

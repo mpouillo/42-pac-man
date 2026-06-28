@@ -1,36 +1,25 @@
 """Animated 3D chase backdrop for the main menu."""
 
 import math
-from dataclasses import dataclass
 from typing import Any
 
 import pyray as ray
 
 from src.constants import (
-    ENTITY_SWAY_DEGREES,
-    ENTITY_SWAY_SPEED,
     GHOST_MODEL_HEIGHT,
     GHOST_MODEL_SCALE,
     PACMAN_MODEL_HEIGHT,
     PACMAN_MODEL_SCALE,
 )
 from src.types.enums import Direction
+from src.view.entity_motion import entity_rotation
 
-DIRECTION_ROTATIONS = {
-    Direction.DOWN: 0.0,
-    Direction.NONE: 0.0,
-    Direction.RIGHT: 90.0,
-    Direction.UP: 180.0,
-    Direction.LEFT: 270.0,
-}
 MENU_CHASE_CAMERA_WORLD_HEIGHT = 8.4
 MENU_CHASE_PACMAN_SCALE = PACMAN_MODEL_SCALE * 0.62
 MENU_CHASE_GHOST_SCALE = GHOST_MODEL_SCALE * 0.62
 MENU_CHASE_Z = 3.35
-MENU_CHASE_LEFT = -9.35
-MENU_CHASE_RIGHT = 9.35
+MENU_CHASE_TRACK_WIDTH_RATIO = 1.10
 MENU_CHASE_SPEED = 2.1
-MENU_CHASE_RUN_GAP = 1.1
 MENU_CHASE_PACMAN_GAP = 1.35
 MENU_CHASE_FIRST_GHOST_OFFSET = 1.55
 MENU_CHASE_GHOST_SPACING = 0.62
@@ -42,16 +31,6 @@ MENU_CHASE_GHOSTS = (
     "ghost_cyan",
     "ghost_orange",
 )
-
-
-@dataclass(frozen=True)
-class PathSample:
-    """Position and facing direction sampled from a chase track."""
-
-    x: float
-    z: float
-    direction: Direction
-    visible: bool
 
 
 class MenuChaseScene:
@@ -78,104 +57,110 @@ class MenuChaseScene:
         if window_width <= 0 or window_height <= 0:
             return
 
-        self._update_camera_size(window_width, window_height)
-
-        ray.begin_mode_3d(self._camera)
-        self._draw_chase_train()
-        ray.end_mode_3d()
-
-    def _update_camera_size(
-        self,
-        window_width: int,
-        window_height: int,
-    ) -> None:
-        """Keep the orthographic view stable across window sizes."""
         aspect_ratio = window_width / window_height
         width_based_height = 15.4 / aspect_ratio
         self._camera.fovy = max(
             MENU_CHASE_CAMERA_WORLD_HEIGHT,
             width_based_height,
         )
+        visible_width = self._camera.fovy * aspect_ratio
+        track_half_width = visible_width * MENU_CHASE_TRACK_WIDTH_RATIO / 2.0
+        track_left = -track_half_width
+        track_right = track_half_width
 
-    def _draw_chase_train(self) -> None:
+        ray.begin_mode_3d(self._camera)
+        self._draw_chase_train(track_left, track_right)
+        ray.end_mode_3d()
+
+    def _draw_chase_train(
+        self,
+        track_left: float,
+        track_right: float,
+    ) -> None:
         """Draw the alternating ghost-chase and Pac-Man-chase trains."""
         segment_distance = self._elapsed * MENU_CHASE_SPEED
-        track_length = abs(MENU_CHASE_RIGHT - MENU_CHASE_LEFT)
-        run_length = track_length + MENU_CHASE_RUN_GAP
+        track_length = abs(track_right - track_left)
+        run_length = track_length + MENU_CHASE_GHOST_SPACING * 8
         cycle_position = segment_distance % (run_length * 2.0)
 
         if cycle_position < run_length:
-            self._draw_ghosts_chasing_pacman(cycle_position)
+            self._draw_chase_run(
+                cycle_position,
+                track_left,
+                track_right,
+                pacman_leads=True,
+            )
         else:
-            self._draw_pacman_chasing_ghosts(cycle_position - run_length)
+            self._draw_chase_run(
+                cycle_position - run_length,
+                track_right,
+                track_left,
+                pacman_leads=False,
+            )
 
-    def _draw_ghosts_chasing_pacman(self, distance: float) -> None:
-        """Draw four ghosts chasing Pac-Man from left to right."""
-        pacman = self._sample_line(
-            MENU_CHASE_LEFT,
-            MENU_CHASE_RIGHT,
-            distance,
+    def _draw_chase_run(
+        self,
+        distance: float,
+        start_x: float,
+        end_x: float,
+        pacman_leads: bool,
+    ) -> None:
+        """Draw one straight chase run in either direction."""
+        ghost_start_offset = (
+            MENU_CHASE_FIRST_GHOST_OFFSET if pacman_leads else 0.0
         )
+        ghost_phase_offset = 0.0 if pacman_leads else 1.2
+        pacman_offset = 0.0
+        if not pacman_leads:
+            pacman_offset = MENU_CHASE_PACMAN_GAP
+            pacman_offset += (
+                (len(MENU_CHASE_GHOSTS) - 1)
+                * MENU_CHASE_GHOST_SPACING
+            )
 
         for index in range(len(MENU_CHASE_GHOSTS) - 1, -1, -1):
             ghost_offset = (
-                MENU_CHASE_FIRST_GHOST_OFFSET
+                ghost_start_offset
                 + index * MENU_CHASE_GHOST_SPACING
             )
             ghost = self._sample_line(
-                MENU_CHASE_LEFT,
-                MENU_CHASE_RIGHT,
+                start_x,
+                end_x,
                 distance - ghost_offset,
             )
             self._draw_ghost(
                 ghost,
                 MENU_CHASE_GHOSTS[index],
-                index * 0.55,
+                ghost_phase_offset + index * 0.55,
             )
 
-        self._draw_pacman(pacman)
-
-    def _draw_pacman_chasing_ghosts(self, distance: float) -> None:
-        """Draw Pac-Man chasing four ghosts from right to left."""
-        for index in range(len(MENU_CHASE_GHOSTS) - 1, -1, -1):
-            ghost = self._sample_line(
-                MENU_CHASE_RIGHT,
-                MENU_CHASE_LEFT,
-                distance - index * MENU_CHASE_GHOST_SPACING,
-            )
-            self._draw_ghost(
-                ghost,
-                MENU_CHASE_GHOSTS[index],
-                1.2 + index * 0.55,
-            )
-
-        pacman_offset = MENU_CHASE_PACMAN_GAP
-        pacman_offset += (
-            (len(MENU_CHASE_GHOSTS) - 1)
-            * MENU_CHASE_GHOST_SPACING
-        )
         pacman = self._sample_line(
-            MENU_CHASE_RIGHT,
-            MENU_CHASE_LEFT,
+            start_x,
+            end_x,
             distance - pacman_offset,
         )
         self._draw_pacman(pacman)
 
-    def _draw_pacman(self, sample: PathSample) -> None:
+    def _draw_pacman(
+        self,
+        sample: tuple[float, Direction] | None,
+    ) -> None:
         """Draw one menu Pac-Man using the loaded gameplay model."""
-        if not sample.visible:
+        if sample is None:
             return
 
+        x, direction = sample
         bob = math.sin(
-            self._elapsed * MENU_CHASE_PACMAN_BOB_SPEED + sample.x
+            self._elapsed * MENU_CHASE_PACMAN_BOB_SPEED + x
         )
         position = ray.Vector3(
-            sample.x,
+            x,
             PACMAN_MODEL_HEIGHT + bob * 0.025,
-            sample.z,
+            MENU_CHASE_Z,
         )
-        rotation_axis, rotation_angle = self._entity_rotation(
-            sample.direction
+        rotation_axis, rotation_angle = entity_rotation(
+            direction,
+            self._elapsed,
         )
 
         ray.draw_model_ex(
@@ -193,24 +178,26 @@ class MenuChaseScene:
 
     def _draw_ghost(
         self,
-        sample: PathSample,
+        sample: tuple[float, Direction] | None,
         model_key: str,
         phase: float,
     ) -> None:
         """Draw one menu ghost using the loaded gameplay model."""
-        if not sample.visible:
+        if sample is None:
             return
 
+        x, direction = sample
         bob = math.sin(
             self._elapsed * MENU_CHASE_GHOST_BOB_SPEED + phase
         )
-        rotation_axis, rotation_angle = self._entity_rotation(
-            sample.direction
+        rotation_axis, rotation_angle = entity_rotation(
+            direction,
+            self._elapsed,
         )
         position = ray.Vector3(
-            sample.x,
+            x,
             GHOST_MODEL_HEIGHT + bob * 0.035,
-            sample.z,
+            MENU_CHASE_Z,
         )
 
         ray.draw_model_ex(
@@ -226,24 +213,12 @@ class MenuChaseScene:
             ray.WHITE,
         )
 
-    def _entity_rotation(self, direction: Direction) -> tuple[Any, float]:
-        """Return shared facing plus left/right turn sway for menu entities."""
-        base_angle = DIRECTION_ROTATIONS.get(direction, 0.0)
-        sway = (
-            math.sin(self._elapsed * ENTITY_SWAY_SPEED)
-            * ENTITY_SWAY_DEGREES
-        )
-        return (
-            ray.Vector3(0.0, 1.0, 0.0),
-            base_angle + sway,
-        )
-
     def _sample_line(
         self,
         start_x: float,
         end_x: float,
         distance: float,
-    ) -> PathSample:
+    ) -> tuple[float, Direction] | None:
         """Return a non-wrapping sample on one visible line segment."""
         delta_x = end_x - start_x
         visible_length = abs(delta_x)
@@ -252,25 +227,10 @@ class MenuChaseScene:
         )
 
         if visible_length == 0.0 or distance < 0.0:
-            return PathSample(
-                start_x,
-                MENU_CHASE_Z,
-                direction,
-                False,
-            )
+            return None
 
         if distance > visible_length:
-            return PathSample(
-                end_x,
-                MENU_CHASE_Z,
-                direction,
-                False,
-            )
+            return None
 
         amount = distance / visible_length
-        return PathSample(
-            start_x + delta_x * amount,
-            MENU_CHASE_Z,
-            direction,
-            True,
-        )
+        return start_x + delta_x * amount, direction

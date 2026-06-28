@@ -132,10 +132,7 @@ class MenuRendererMixin:
             )
             if index == selected_index:
                 marker_x = option_x - MENU_MARKER_GAP - MENU_MARKER_SIZE
-                self._draw_menu_marker(
-                    marker_x,
-                    item_y,
-                )
+                self._draw_menu_marker(marker_x, item_y)
 
         self._draw_centered_text(
             footer,
@@ -166,11 +163,10 @@ class MenuRendererMixin:
         marker_offset *= MENU_MARKER_FLOAT_DISTANCE
         pulse = (math.sin(elapsed * MENU_MARKER_PULSE_SPEED) + 1.0) / 2.0
 
-        marker_size = float(MENU_MARKER_SIZE)
         marker_x = float(x) + marker_offset
         center_y = float(y) + TEXT_PAGE_BODY_FONT_SIZE / 2.0
-        half_height = marker_size * 0.36
-        tip_x = marker_x + marker_size
+        half_height = MENU_MARKER_SIZE * 0.36
+        tip_x = marker_x + MENU_MARKER_SIZE
 
         shadow_color = ray.Color(
             SELECTED_COLOR.r,

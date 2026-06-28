@@ -1,15 +1,21 @@
 """3D maze, entity, asset, and HUD rendering."""
 # mypy: disable-error-code="attr-defined"
 
+import math
 from pathlib import Path
 from typing import Any
 
 import pyray as ray
 
 from src.constants import (
-    AUTO_FOV_PADDING,
-    AUTO_FOV_SCALE,
+    AUTO_CAMERA_DISTANCE_PADDING,
+    AUTO_FOV_FIT_HEIGHT,
+    AUTO_FOV_WORLD_PADDING,
+    CAMERA_POSITION,
+    CAMERA_TARGET,
+    CAMERA_UP,
     CELL_SIZE_3D,
+    DEFAULT_FOV,
     FOV_MAX,
     FOV_MIN,
     FOV_SPEED,
@@ -35,22 +41,179 @@ from src.view.wall_shapes import WallAssetKind, get_wall_asset_kind
 class Scene3DRendererMixin(Entity3DRendererMixin):
     """Draw the game scene, HUD, and wall assets."""
 
-    def calculate_auto_fov(self, grid: list[list[CellState]]) -> float:
-        """Calculate a FOV that fits the current maze size."""
-        if not grid or not grid[0] or self._window_height <= 0:
-            return float(self._fov)
+    def _calculate_auto_camera_fit(
+        self,
+        grid: list[list[CellState]],
+    ) -> tuple[float, float] | None:
+        """Return a camera fit that keeps maze bounds inside the screen."""
+        if (
+            not grid
+            or not grid[0]
+            or self._window_width <= 0
+            or self._window_height <= 0
+        ):
+            return None
 
+        points = self._maze_bounds_points(grid)
+        default_distance = math.dist(CAMERA_POSITION, CAMERA_TARGET)
+
+        camera = self._camera_at_distance(default_distance, FOV_MIN)
+        if camera is None:
+            return None
+        if self._maze_fits_on_screen(points, camera):
+            return FOV_MIN, default_distance
+
+        low_fov = FOV_MIN
+        high_fov = FOV_MAX
+        for _ in range(12):
+            mid_fov = (low_fov + high_fov) / 2.0
+            camera = self._camera_at_distance(default_distance, mid_fov)
+            if camera is None:
+                return None
+
+            if self._maze_fits_on_screen(points, camera):
+                high_fov = mid_fov
+            else:
+                low_fov = mid_fov
+
+        fov = high_fov
+        camera = self._camera_at_distance(default_distance, fov)
+        if camera is not None and self._maze_fits_on_screen(points, camera):
+            return fov, default_distance
+
+        fov = FOV_MAX
+        low_distance = default_distance
+        high_distance = default_distance
+        for _ in range(20):
+            high_distance *= 1.25
+            camera = self._camera_at_distance(high_distance, fov)
+            if camera is None:
+                return None
+
+            if self._maze_fits_on_screen(points, camera):
+                break
+        else:
+            return fov, high_distance
+
+        for _ in range(12):
+            mid_distance = (low_distance + high_distance) / 2.0
+            camera = self._camera_at_distance(mid_distance, fov)
+            if camera is None:
+                return None
+
+            if self._maze_fits_on_screen(points, camera):
+                high_distance = mid_distance
+            else:
+                low_distance = mid_distance
+
+        return fov, high_distance + AUTO_CAMERA_DISTANCE_PADDING
+
+    def _maze_bounds_points(
+        self,
+        grid: list[list[CellState]],
+    ) -> list[Any]:
+        """Return world-space corners around the full maze bounds."""
         rows = len(grid)
         cols = len(grid[0])
-        aspect_ratio = self._window_width / self._window_height
-        maze_size = max(rows, cols / aspect_ratio)
-        return float(
-            maze_size * AUTO_FOV_SCALE + AUTO_FOV_PADDING
+        half_width = (
+            cols / 2.0 + AUTO_FOV_WORLD_PADDING
+        ) * CELL_SIZE_3D
+        half_depth = (
+            rows / 2.0 + AUTO_FOV_WORLD_PADDING
+        ) * CELL_SIZE_3D
+
+        return [
+            ray.Vector3(x, y, z)
+            for x in (-half_width, half_width)
+            for y in (0.0, AUTO_FOV_FIT_HEIGHT)
+            for z in (-half_depth, half_depth)
+        ]
+
+    def _maze_fits_on_screen(
+        self,
+        points: list[Any],
+        camera: Any,
+        margin: int = 40,
+    ) -> bool:
+        """Return whether all maze bound points project inside the viewport."""
+        for point in points:
+            screen = ray.get_world_to_screen(point, camera)
+            if screen.x < margin:
+                return False
+            if screen.x > self._window_width - margin:
+                return False
+            if screen.y < margin:
+                return False
+            if screen.y > self._window_height - margin:
+                return False
+
+        return True
+
+    def _camera_at_distance(
+        self,
+        distance: float,
+        fov: float,
+    ) -> Any | None:
+        """Return a camera along its default target-to-position direction."""
+        target = tuple(float(value) for value in CAMERA_TARGET)
+        default_position = tuple(float(value) for value in CAMERA_POSITION)
+        direction = (
+            default_position[0] - target[0],
+            default_position[1] - target[1],
+            default_position[2] - target[2],
         )
+        length = math.sqrt(
+            direction[0] ** 2
+            + direction[1] ** 2
+            + direction[2] ** 2
+        )
+        if length <= 0.0:
+            return None
+
+        unit_direction = (
+            direction[0] / length,
+            direction[1] / length,
+            direction[2] / length,
+        )
+        position = (
+            target[0] + unit_direction[0] * distance,
+            target[1] + unit_direction[1] * distance,
+            target[2] + unit_direction[2] * distance,
+        )
+
+        return ray.Camera3D(
+            ray.Vector3(*position),
+            ray.Vector3(*target),
+            ray.Vector3(*CAMERA_UP),
+            fov,
+            self._camera.projection,
+        )
+
+    def _set_camera_distance(
+        self,
+        distance: float,
+    ) -> None:
+        """Move the camera along its default target-to-position direction."""
+        camera = self._camera_at_distance(distance, self._fov)
+        if camera is None:
+            return
+
+        self._camera.position = camera.position
+        self._camera.target = camera.target
+        self._camera.up = camera.up
+
+    def _reset_camera_position(self) -> None:
+        """Restore the camera to its default position and target."""
+        self._camera.position = ray.Vector3(*CAMERA_POSITION)
+        self._camera.target = ray.Vector3(*CAMERA_TARGET)
+        self._camera.up = ray.Vector3(*CAMERA_UP)
 
     def reset_fov(self) -> None:
         """Enable automatic FOV for a new game."""
         self._auto_fov_enabled = True
+        self._fov = DEFAULT_FOV
+        self._camera.fovy = self._fov
+        self._reset_camera_position()
 
     def update_fov(
         self,
@@ -64,7 +227,10 @@ class Scene3DRendererMixin(Entity3DRendererMixin):
             self._auto_fov_enabled = False
 
         if self._auto_fov_enabled:
-            self._fov = self.calculate_auto_fov(grid)
+            camera_fit = self._calculate_auto_camera_fit(grid)
+            if camera_fit is not None:
+                self._fov, camera_distance = camera_fit
+                self._set_camera_distance(camera_distance)
 
         if increase:
             self._fov += FOV_SPEED * delta_time
@@ -202,7 +368,6 @@ class Scene3DRendererMixin(Entity3DRendererMixin):
             -bounds.min.y * WALL_MODEL_HEIGHT_SCALE,
         )
         scale_x, scale_z = self._wall_thickness_scale(asset_kind)
-
         ray.draw_model_ex(
             model,
             position,
@@ -256,15 +421,18 @@ class Scene3DRendererMixin(Entity3DRendererMixin):
             for x, cell in enumerate(row):
                 if cell == CellState.WALL:
                     self._draw_3d_wall(x, y, grid)
-                elif cell == CellState.PACGUM:
-                    self._draw_3d_pacgum(x, y, grid, pacgum_height)
-                elif cell == CellState.SUPER_PACGUM:
-                    self._draw_3d_pacgum(
-                        x,
-                        y,
-                        grid,
-                        pacgum_height,
-                        is_super=True,
+
+        for y, row in enumerate(grid):
+            for x, cell in enumerate(row):
+                if cell in (CellState.PACGUM, CellState.SUPER_PACGUM):
+                    self._draw_3d_pacgum_at(
+                        self._grid_to_world(
+                            float(x),
+                            float(y),
+                            grid,
+                            pacgum_height,
+                        ),
+                        is_super=cell == CellState.SUPER_PACGUM,
                     )
 
     def _draw_3d_floor(

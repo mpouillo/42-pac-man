@@ -142,11 +142,9 @@ class PageRendererMixin:
                 ERROR_TEXT_COLOR,
             )
 
+        footer = "Enter: save score"
         if state.score_entry_saved:
             footer = "Score saved. Press Enter or Escape to return"
-        else:
-            footer = "Enter: save score"
-
         self._draw_centered_text(
             footer,
             self._window_height - TEXT_PAGE_FOOTER_BOTTOM_OFFSET,
@@ -161,29 +159,29 @@ class PageRendererMixin:
     ) -> list[tuple[str, bool]]:
         """Build highscore preview lines with the current player's rank."""
         scores = model.get_top_scores(HIGHSCORE_QUERY_LIMIT)
-        current_score = model.get_score()
-
-        player_name = "YOU"
-        if state.score_entry_saved and state.pending_player_name.strip():
-            player_name = state.pending_player_name.strip()
-
-        base_scores = scores
 
         if state.score_entry_saved:
-            base_scores = self._scores_without_current_saved_entry(
-                scores,
-                player_name,
-                current_score,
-            )
+            return [
+                (
+                    _format_score_line(index + 1, entry.name, entry.score),
+                    False,
+                )
+                for index, entry in enumerate(
+                    scores[:HIGHSCORE_DISPLAY_LIMIT]
+                )
+            ]
+
+        player_name = state.pending_player_name.strip() or "YOU"
+        current_score = model.get_score()
 
         rank = 1 + sum(
-            1 for entry in base_scores
+            1 for entry in scores
             if entry.score >= current_score
         )
 
         if rank <= HIGHSCORE_DISPLAY_LIMIT:
             return self._build_top_ten_with_player(
-                base_scores,
+                scores,
                 rank,
                 player_name,
                 current_score,
@@ -195,7 +193,7 @@ class PageRendererMixin:
                 False,
             )
             for index, entry in enumerate(
-                base_scores[:HIGHSCORE_DISPLAY_LIMIT]
+                scores[:HIGHSCORE_DISPLAY_LIMIT]
             )
         ]
 
@@ -207,29 +205,6 @@ class PageRendererMixin:
         )
         return lines
 
-    def _scores_without_current_saved_entry(
-        self,
-        scores: list[Any],
-        player_name: str,
-        current_score: int,
-    ) -> list[Any]:
-        """Remove the saved entry to avoid displaying it twice."""
-        filtered: list[Any] = []
-        removed = False
-
-        for entry in scores:
-            if (
-                not removed
-                and entry.name == player_name
-                and entry.score == current_score
-            ):
-                removed = True
-                continue
-
-            filtered.append(entry)
-
-        return filtered
-
     def _build_top_ten_with_player(
         self,
         scores: list[Any],
@@ -239,24 +214,20 @@ class PageRendererMixin:
     ) -> list[tuple[str, bool]]:
         """Build top 10 lines with current player inserted."""
         lines: list[tuple[str, bool]] = []
-        inserted = False
-        display_index = 1
         score_index = 0
 
-        while len(lines) < HIGHSCORE_DISPLAY_LIMIT:
-            if display_index == rank:
+        for display_rank in range(1, HIGHSCORE_DISPLAY_LIMIT + 1):
+            if display_rank == rank:
                 lines.append(
                     (
                         _format_score_line(
-                            display_index,
+                            display_rank,
                             player_name,
                             current_score,
                         ),
                         True,
                     )
                 )
-                inserted = True
-                display_index += 1
                 continue
 
             if score_index >= len(scores):
@@ -266,7 +237,7 @@ class PageRendererMixin:
             lines.append(
                 (
                     _format_score_line(
-                        display_index,
+                        display_rank,
                         entry.name,
                         entry.score,
                     ),
@@ -274,15 +245,6 @@ class PageRendererMixin:
                 )
             )
             score_index += 1
-            display_index += 1
-
-        if not inserted and len(lines) < HIGHSCORE_DISPLAY_LIMIT:
-            lines.append(
-                (
-                    _format_score_line(rank, player_name, current_score),
-                    True,
-                )
-            )
 
         return lines
 

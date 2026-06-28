@@ -64,11 +64,13 @@ class GameController:
         if phase == GamePhase.MAIN_MENU:
             self._update_main_menu(input_state)
 
-        elif phase == GamePhase.HIGHSCORES_MENU:
-            self._update_simple_return_screen(input_state)
-
-        elif phase == GamePhase.INSTRUCTIONS_MENU:
-            self._update_simple_return_screen(input_state)
+        elif phase in (
+            GamePhase.HIGHSCORES_MENU,
+            GamePhase.INSTRUCTIONS_MENU,
+        ):
+            if input_state.confirm or input_state.escape:
+                self._model.set_game_phase(GamePhase.MAIN_MENU)
+                self._main_menu_index = 0
 
         elif phase == GamePhase.PLAYING:
             self._update_playing(input_state, delta_time)
@@ -100,18 +102,13 @@ class GameController:
 
     def _update_main_menu(self, input_state: InputState) -> None:
         """Handle main menu input."""
-        self._main_menu_index = self._move_menu_index(
-            self._main_menu_index,
-            len(MAIN_MENU_OPTIONS),
-            input_state,
-        )
-        self._main_menu_index, mouse_confirmed = self._update_menu_mouse(
+        self._main_menu_index, confirmed = self._update_menu_selection(
             input_state,
             self._main_menu_index,
             MAIN_MENU_OPTIONS,
         )
 
-        if not input_state.confirm and not mouse_confirmed:
+        if not confirmed:
             return
 
         selected = self._main_menu_index
@@ -127,6 +124,25 @@ class GameController:
 
         elif selected == 3:
             self._running = False
+
+    def _update_menu_selection(
+        self,
+        input_state: InputState,
+        selected_index: int,
+        options: Sequence[str],
+    ) -> tuple[int, bool]:
+        """Return the updated menu index and confirmation state."""
+        if input_state.up:
+            selected_index = (selected_index - 1) % len(options)
+        elif input_state.down:
+            selected_index = (selected_index + 1) % len(options)
+
+        selected_index, mouse_confirmed = self._update_menu_mouse(
+            input_state,
+            selected_index,
+            options,
+        )
+        return selected_index, input_state.confirm or mouse_confirmed
 
     def _update_menu_mouse(
         self,
@@ -157,19 +173,6 @@ class GameController:
             return selected_index, False
 
         return index, bool(input_state.mouse_left_pressed)
-
-    def _move_menu_index(
-        self,
-        index: int,
-        size: int,
-        input_state: InputState,
-    ) -> int:
-        """Move a menu index with up/down input."""
-        if input_state.up:
-            return (index - 1) % size
-        if input_state.down:
-            return (index + 1) % size
-        return index
 
     def _start_new_game(self) -> None:
         """Create a fresh model and start a new game."""
@@ -232,12 +235,7 @@ class GameController:
             self._cheat_states[CheatType.GHOST_FREEZE],
             self._cheat_states[CheatType.SPEED_BOOST],
         )
-        self._pause_menu_index = self._move_menu_index(
-            self._pause_menu_index,
-            len(pause_options),
-            input_state,
-        )
-        self._pause_menu_index, mouse_confirmed = self._update_menu_mouse(
+        self._pause_menu_index, confirmed = self._update_menu_selection(
             input_state,
             self._pause_menu_index,
             pause_options,
@@ -247,7 +245,7 @@ class GameController:
             self._model.set_game_phase(GamePhase.PLAYING)
             return
 
-        if not input_state.confirm and not mouse_confirmed:
+        if not confirmed:
             return
 
         selected = self._pause_menu_index
@@ -268,12 +266,6 @@ class GameController:
             self._toggle_cheat(CheatType.LEVEL_SKIP)
 
         elif selected == 5:
-            self._model.set_game_phase(GamePhase.MAIN_MENU)
-            self._main_menu_index = 0
-
-    def _update_simple_return_screen(self, input_state: InputState) -> None:
-        """Handle highscores and instructions screens."""
-        if input_state.confirm or input_state.escape:
             self._model.set_game_phase(GamePhase.MAIN_MENU)
             self._main_menu_index = 0
 

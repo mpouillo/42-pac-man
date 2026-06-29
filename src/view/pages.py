@@ -127,7 +127,7 @@ class PageRendererMixin:
             if is_current_score and index < len(lines) - 1:
                 y += extra_spacing
 
-        displayed_name = state.pending_player_name.strip()
+        displayed_name = state.pending_player_name
 
         self._draw_score_entry_name(
             displayed_name,
@@ -171,7 +171,7 @@ class PageRendererMixin:
                 )
             ]
 
-        player_name = state.pending_player_name.strip() or "YOU"
+        player_name = state.pending_player_name or "YOU"
         current_score = model.get_score()
 
         rank = 1 + sum(

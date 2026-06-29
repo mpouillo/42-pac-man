@@ -1,0 +1,33 @@
+name: Lint
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+          cache: 'pip'
+
+      - name: Install linting frameworks
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install flake8 mypy pydantic
+
+      - name: Flake8 check
+        run:  python3 -m flake8 .
+
+      - name: Mypy strict check
+        run:  python3 -m mypy . --strict --warn-return-any --warn-unused-ignores --ignore-missing-imports --disallow-untyped-defs --check-untyped-defs

@@ -38,6 +38,7 @@ build: install
 		--specpath $(BUILD_DIR) \
 		--workpath $(BUILD_DIR) \
 		--distpath $(DIST_DIR) \
+		--contents-directory . \
 		--name=$(NAME) \
 		--add-data "$(PWD)/assets:assets" \
 		pac-man.py

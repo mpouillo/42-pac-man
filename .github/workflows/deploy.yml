@@ -27,7 +27,7 @@ jobs:
         run: make dist
 
       - name: Publish to Itch.io
-        uses: Oval-Tutu/publish-to-itch-with-butler@v1
+        uses: Oval-Tutu/publish-to-itch-with-butler@main
         with:
           api-key: ${{ secrets.BUTLER_API_KEY }}
           itch_user: mpouillo

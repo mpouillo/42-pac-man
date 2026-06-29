@@ -150,7 +150,7 @@ class GameModel(ModelProtocol):
     def _win_round(self) -> None:
         """Transition the game phase on win or advance to the next level."""
         self._score += int(
-            self._level_timer
+            int(self._level_timer)
             * self._config.points_per_second_left
         )
 

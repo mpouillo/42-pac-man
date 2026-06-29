@@ -299,7 +299,7 @@ class GameController:
         if not input_state.confirm:
             return
 
-        player_name = self._pending_player_name.strip()
+        player_name = self._pending_player_name
 
         if not player_name:
             self._name_error = "Name cannot be empty"

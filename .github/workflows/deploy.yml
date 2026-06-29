@@ -21,16 +21,22 @@ jobs:
       - name: Install System Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y zip
+          sudo apt-get install -y zip curl
 
       - name: Build package
         run: make dist
 
+      - name: Download and Setup Butler
+        run: |
+          mkdir -p ./tools
+          curl -sSLfo ./tools/butler.zip "https://broth.itch.zone/butler/linux-amd64/LATEST/archive/default"
+          cd tools
+          unzip butler.zip
+          chmod +x butler
+          ./butler -V
+
       - name: Publish to Itch.io
-        uses: Oval-Tutu/publish-to-itch-with-butler@main
-        with:
-          api-key: ${{ secrets.BUTLER_API_KEY }}
-          itch_user: mpouillo
-          itch_game: pac-man
-          channel: linux
-          package: ./dist/pac-man.zip
+        env:
+          BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
+        run: |
+          ./tools/butler push ./dist/pac-man.zip mpouillo/pac-man:linux

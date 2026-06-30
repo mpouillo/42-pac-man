@@ -1,5 +1,12 @@
 from pathlib import Path
-from pydantic import BaseModel, FilePath, Field
+from pydantic import (
+    BaseModel,
+    FilePath,
+    Field,
+    RootModel,
+    field_validator
+)
+from src.highscore import HighscoreEntry
 
 
 class ConfigData(BaseModel):
@@ -13,27 +20,40 @@ class ConfigData(BaseModel):
     points_per_ghost: int = Field(..., ge=0)
     points_per_second_left: int = Field(..., ge=0)
 
+    @field_validator('highscores', mode='after')
+    @classmethod
+    def validate_highscores_file(cls, filename: str) -> str:
+        """Check highscores file is valid and can be used."""
+        path = Path(filename)
+
+        if not path.exists():
+            return filename
+
+        if path.is_dir():
+            raise ValueError(
+                f"Path '{filename}' points to a directory, not a file."
+            )
+
+        contents = path.read_text(encoding="utf-8")
+        if not contents.strip():
+            return filename
+
+        clean_lines = (
+            line for line in contents.splitlines()
+            if not line.strip().startswith("#")
+        )
+        clean_data = "\n".join(clean_lines)
+
+        try:
+            RootModel[list[HighscoreEntry]].model_validate_json(clean_data)
+            return filename
+        except Exception:
+            raise ValueError("File exists but is not a valid highscores file.")
+
 
 def load_config(file_path: str) -> ConfigData:
     """Load, pre-process, and validate a JSON configuration file."""
-    path = Path(file_path)
-    if not path.exists():
-        raise FileNotFoundError(f"Config file not found: {file_path}")
-    if path.is_dir():
-        raise IsADirectoryError(f"Config path is a directory: {file_path}")
-
     try:
-        raw_data = path.read_text()
-    except OSError as e:
-        raise OSError(f"Error while reading config file: {e}")
-
-    clean_lines = (
-        line for line in raw_data.splitlines()
-        if not line.strip().startswith("#")
-    )
-    clean_data = "\n".join(clean_lines)
-
-    try:
-        return ConfigData.model_validate_json(clean_data)
+        return ConfigData.model_validate_json(Path(file_path).read_text())
     except Exception as e:
         raise ValueError(f"Invalid configuration data layout: {e}")

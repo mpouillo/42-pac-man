@@ -5,10 +5,10 @@
     "seed": null,
     "pacman_spawn": { "x": 8, "y": 9 },
     "ghost_spawns": {
-        "PINK": { "x": 1, "y": 1 },
-        "RED": { "x": 16, "y": 1 },
-        "ORANGE": { "x": 16, "y": 16 },
-        "BLUE": { "x": 1, "y": 16 }
+        "PINK": { "x": 1, "y": 0 },
+        "RED": { "x": 17, "y": 1 },
+        "ORANGE": { "x": 16, "y": 17 },
+        "BLUE": { "x": 0, "y": 16 }
     },
     "super_pacgums": [
         { "x": 0, "y": 0 },

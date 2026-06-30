@@ -116,7 +116,7 @@ Contributions:
     - Config (`config.json`, `config.py`)
     - Highscores (`highscore.py`)
 - **zqian**:
-    - View (`menus.py`, `pages.py`, `scene_3d.py`, `entities_3d.py`, `fov.py`, `ui.py`, `wall_shapes.py`)
+    - View (`background.py`, `entities_3d.py`, `entity_motion.py`, `menu_chase_scene.py`, `menus.py`, `pages.py`, `scene_3d.py`, `screen_shake.py`, `ui.py`, `wall_shapes.py`)
     - Controller (`game_controller.py`, `input.py`)
 
 [More details here](management/timeline.md)
